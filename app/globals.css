@@ -1,0 +1,163 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-plum: var(--brand-primary);
+  --color-brand-plum-dark: var(--brand-primary-dark);
+  --color-brand-plum-light: var(--brand-primary-light);
+  --color-accent-gold: var(--brand-accent);
+  --color-accent-gold-dark: var(--brand-accent-dark);
+  --color-accent-gold-light: var(--brand-accent-light);
+  --color-cream-bg: #FAF6F0;
+  --color-cream-light: #FDFBF9;
+  --color-charcoal: #2D2A26;
+  
+  --font-serif: var(--font-playfair);
+  --font-sans: var(--font-jakarta);
+}
+
+:root {
+  --brand-primary: #7A1A40;
+  --brand-primary-light: #9B2C5B;
+  --brand-primary-dark: #530F2A;
+  --brand-accent: #D9B382;
+  --brand-accent-dark: #C5A170;
+  --brand-accent-light: #EAD0B0;
+}
+
+[data-site="burger"] {
+  --brand-primary: #E63946; /* Spicy Red */
+  --brand-primary-light: #FF5C66;
+  --brand-primary-dark: #A81B26;
+  --brand-accent: #FB8500; /* Melted Cheddar */
+  --brand-accent-dark: #D47000;
+  --brand-accent-light: #FFB703;
+}
+
+/* Base resets & typography */
+body {
+  background-color: #FAF6F0; /* cream-bg */
+  color: #2D2A26; /* charcoal */
+  overflow-x: hidden;
+  font-family: var(--font-jakarta), system-ui, -apple-system, sans-serif;
+}
+
+h1, h2, h3, h4, .font-serif-heading {
+  font-family: var(--font-playfair), Georgia, serif;
+}
+
+/* Custom premium scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #FAF6F0;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--brand-primary), var(--brand-accent));
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--brand-primary-dark), var(--brand-accent-dark));
+}
+
+/* Luxury Glassmorphism effect */
+.luxury-glass {
+  background: rgba(253, 251, 249, 0.75);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(217, 179, 130, 0.2);
+  box-shadow: 0 10px 40px -10px rgba(122, 26, 64, 0.04);
+}
+
+.luxury-glass-dark {
+  background: rgba(45, 42, 38, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(217, 179, 130, 0.15);
+  box-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.3);
+}
+
+/* Gold Glow / Foil highlights */
+.gold-glow {
+  box-shadow: 0 0 25px -5px rgba(217, 179, 130, 0.25);
+}
+
+.gold-glow-hover:hover {
+  box-shadow: 0 15px 35px -5px rgba(217, 179, 130, 0.4);
+}
+
+.gold-border {
+  border: 1px solid rgba(217, 179, 130, 0.3);
+}
+
+.gold-border-hover:hover {
+  border-color: rgba(217, 179, 130, 0.8);
+}
+
+/* Gradient text utility */
+.gradient-text-gold {
+  background: linear-gradient(135deg, #7A1A40 0%, #D9B382 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-luxury {
+  background: linear-gradient(135deg, #7A1A40 30%, #C5A170 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Animations */
+@keyframes gentle-float {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-8px) rotate(0.5deg); }
+}
+
+.float-animation {
+  animation: gentle-float 6s ease-in-out infinite;
+}
+
+@keyframes slow-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.spin-slow {
+  animation: slow-spin 25s linear infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer-btn {
+  background: #7A1A40;
+  background-size: 200% auto;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.shimmer-btn:hover {
+  background: linear-gradient(90deg, #7A1A40 0%, #9B2C5B 25%, #D9B382 50%, #9B2C5B 75%, #7A1A40 100%);
+  background-size: 200% auto;
+  animation: shimmer 1.5s linear infinite;
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px -5px rgba(122, 26, 64, 0.4);
+}
+
+/* Card lift effects */
+.luxury-card {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.luxury-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 20px 40px -10px rgba(122, 26, 64, 0.08), 0 0 20px -5px rgba(217, 179, 130, 0.2);
+}
+
+/* Hide scrollbar classes */
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
