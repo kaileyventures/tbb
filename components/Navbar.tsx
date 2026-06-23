@@ -112,9 +112,10 @@ export default function Navbar() {
                 onClick={() => setSite('burger')}
                 className={`px-2.5 py-1.5 rounded-lg text-[10px] font-extrabold uppercase tracking-wider transition-all duration-300 flex items-center gap-1 cursor-pointer ${
                   activeSite === 'burger' 
-                    ? 'bg-brand-plum text-white shadow-sm' 
+                    ? 'text-white shadow-sm' 
                     : 'text-charcoal/50 hover:text-charcoal'
                 }`}
+                style={activeSite === 'burger' ? { backgroundColor: 'var(--brand-primary)' } : undefined}
               >
                 <span>🍔</span>
                 <span className="hidden xs:inline">Spicy</span>
