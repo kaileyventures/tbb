@@ -120,19 +120,6 @@ flowchart TD
     class EraseEntry trashNode;
 ```
 
----
-
-## 🛠️ Environment Configuration
-
-Ensure your `.env.local` file contains the required Supabase credentials and password:
-
-```ini
-NEXT_PUBLIC_SUPABASE_URL=https://szgzjgnzhtpapscdkazs.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI...
-NEXT_PUBLIC_ADMIN_PASSWORD=Tbb@Gagan123
-```
-
----
 
 ## 🚀 Getting Started
 
