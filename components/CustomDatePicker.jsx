@@ -175,20 +175,34 @@ export default function CustomDatePicker({
     days.push(i);
   }
 
-  // Format value to display beautifully
+  // Format value to display beautifully: DD-MMM-YYYY, DDD (e.g. 20-Aug-2026, Thu)
   const getDisplayDate = () => {
     const strVal = getStringValue(value);
     if (!strVal) return '';
     const parts = strVal.split('-');
     if (parts.length === 3) {
-      const date = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+      const year = parseInt(parts[0], 10);
+      const monthIdx = parseInt(parts[1], 10) - 1;
+      const dayNum = parseInt(parts[2], 10);
+      const date = new Date(year, monthIdx, dayNum);
       if (!isNaN(date.getTime())) {
-        return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+        const day = String(dayNum).padStart(2, '0');
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const month = monthNames[date.getMonth()];
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const dayName = dayNames[date.getDay()];
+        return `${day}-${month}-${year}, ${dayName}`;
       }
     }
     const d = new Date(strVal);
     if (!isNaN(d.getTime())) {
-      return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+      const day = String(d.getDate()).padStart(2, '0');
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const month = monthNames[d.getMonth()];
+      const year = d.getFullYear();
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const dayName = dayNames[d.getDay()];
+      return `${day}-${month}-${year}, ${dayName}`;
     }
     return strVal;
   };

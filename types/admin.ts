@@ -24,3 +24,10 @@ export interface PurchaseEntry {
   notes?: string;
   created_at?: string;
 }
+
+export interface TrashEntry {
+  id: string;
+  original_type: 'sale' | 'purchase';
+  item: SaleEntry | PurchaseEntry;
+  deleted_at: string; // ISO string when moved to trash
+}

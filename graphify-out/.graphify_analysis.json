@@ -1,0 +1,365 @@
+{
+  "communities": {
+    "0": [
+      "app_about_page",
+      "app_about_page_aboutpage",
+      "app_contact_page",
+      "app_contact_page_contactpage",
+      "app_customcakes_page",
+      "app_customcakes_page_customcakespage",
+      "app_layout",
+      "app_layout_jakarta",
+      "app_layout_metadata",
+      "app_layout_playfair",
+      "app_layout_rootlayout",
+      "components_baker_aboutview",
+      "components_baker_aboutview_bakeraboutview",
+      "components_baker_contactview",
+      "components_baker_contactview_bakercontactview",
+      "components_baker_customcakesview",
+      "components_baker_customcakesview_bakercustomcakesview",
+      "components_burger_aboutview",
+      "components_burger_aboutview_burgeraboutview",
+      "components_burger_contactview",
+      "components_burger_contactview_burgercontactview",
+      "components_burger_partyordersview",
+      "components_burger_partyordersview_burgerpartyordersview",
+      "components_footer",
+      "components_footer_footer",
+      "components_layoutshell",
+      "components_layoutshell_layoutshell",
+      "components_navbar",
+      "components_navbar_navbar",
+      "components_productcard_productcard",
+      "components_productmodal",
+      "components_productmodal_productmodal",
+      "components_productmodal_productmodalprops",
+      "context_sitecontext",
+      "context_sitecontext_sitecontext",
+      "context_sitecontext_sitecontexttype",
+      "context_sitecontext_sitemode",
+      "context_sitecontext_siteprovider",
+      "context_sitecontext_usesite"
+    ],
+    "1": [
+      "components_baker_herosection",
+      "components_baker_herosection_bakerherosection",
+      "components_baker_herosection_herosectionprops",
+      "components_baker_menugrid",
+      "components_baker_menugrid_bakermenugrid",
+      "components_baker_menugrid_menugridprops",
+      "components_baker_productcard",
+      "components_baker_productcard_bakerproductcard",
+      "components_baker_productmodal",
+      "components_baker_productmodal_bakerproductmodal",
+      "components_baker_productmodal_productmodalprops",
+      "components_burger_herosection",
+      "components_burger_herosection_burgerherosection",
+      "components_burger_herosection_herosectionprops",
+      "components_burger_menugrid",
+      "components_burger_menugrid_burgermenugrid",
+      "components_burger_menugrid_menugridprops",
+      "components_burger_productcard",
+      "components_burger_productcard_burgerproductcard",
+      "components_burger_productmodal",
+      "components_burger_productmodal_burgerproductmodal",
+      "components_burger_productmodal_productmodalprops",
+      "components_herosection",
+      "components_herosection_herosection",
+      "components_herosection_herosectionprops",
+      "components_menugrid",
+      "components_menugrid_menugridprops",
+      "components_productcard",
+      "hooks_types",
+      "hooks_types_menuitem"
+    ],
+    "2": [
+      "app_tbb_page",
+      "app_tbb_page_adminpage",
+      "app_tbb_page_formatdateformatted",
+      "app_tbb_page_initial_purchases",
+      "app_tbb_page_initial_sales",
+      "components_autosuggestinput",
+      "components_autosuggestinput_autosuggestinput",
+      "components_autosuggestinput_autosuggestinputprops",
+      "components_customdatepicker",
+      "components_customdatepicker_currentyear",
+      "components_customdatepicker_customdatepicker",
+      "components_customdatepicker_months",
+      "components_customdatepicker_years",
+      "context_supabase",
+      "package_dependencies_xlsx",
+      "types_admin",
+      "types_admin_purchaseentry",
+      "types_admin_saleentry",
+      "types_admin_trashentry",
+      "utils_excelexport",
+      "utils_excelexport_exportbothtoexcel",
+      "utils_excelexport_exportsingletoexcel",
+      "utils_excelexport_formatdateformatted",
+      "utils_excelexport_formatrowforexcel",
+      "xlsx"
+    ],
+    "3": [
+      "lucide_react",
+      "next",
+      "package",
+      "package_dependencies",
+      "package_dependencies_lucide_react",
+      "package_dependencies_next",
+      "package_dependencies_react",
+      "package_dependencies_react_dom",
+      "package_dependencies_supabase_supabase_js",
+      "package_name",
+      "package_private",
+      "package_scripts",
+      "package_scripts_build",
+      "package_scripts_dev",
+      "package_scripts_lint",
+      "package_scripts_start",
+      "package_version",
+      "react",
+      "react_dom",
+      "supabase_supabase_js"
+    ],
+    "4": [
+      "ref_dom",
+      "ref_dom_iterable",
+      "ref_esnext",
+      "tsconfig_compileroptions",
+      "tsconfig_compileroptions_allowjs",
+      "tsconfig_compileroptions_baseurl",
+      "tsconfig_compileroptions_esmoduleinterop",
+      "tsconfig_compileroptions_incremental",
+      "tsconfig_compileroptions_isolatedmodules",
+      "tsconfig_compileroptions_jsx",
+      "tsconfig_compileroptions_lib",
+      "tsconfig_compileroptions_module",
+      "tsconfig_compileroptions_moduleresolution",
+      "tsconfig_compileroptions_noemit",
+      "tsconfig_compileroptions_paths",
+      "tsconfig_compileroptions_plugins",
+      "tsconfig_compileroptions_resolvejsonmodule",
+      "tsconfig_compileroptions_skiplibcheck",
+      "tsconfig_compileroptions_strict",
+      "tsconfig_compileroptions_target"
+    ],
+    "5": [
+      "eslint",
+      "eslint_config_next",
+      "package_devdependencies",
+      "package_devdependencies_eslint",
+      "package_devdependencies_eslint_config_next",
+      "package_devdependencies_tailwindcss",
+      "package_devdependencies_tailwindcss_postcss",
+      "package_devdependencies_types_node",
+      "package_devdependencies_types_react",
+      "package_devdependencies_types_react_dom",
+      "package_devdependencies_typescript",
+      "tailwindcss",
+      "tailwindcss_postcss",
+      "types_node",
+      "types_react",
+      "types_react_dom",
+      "typescript"
+    ],
+    "6": [
+      "app_page",
+      "app_page_home",
+      "components_baker_bentohighlights",
+      "components_baker_bentohighlights_bakerbentohighlights",
+      "components_bentohighlights",
+      "components_bentohighlights_bentohighlights",
+      "components_burger_bentohighlights",
+      "components_burger_bentohighlights_burgerbentohighlights",
+      "components_menugrid_menugrid",
+      "constants_burgermenu",
+      "constants_burgermenu_burger_menu_items",
+      "hooks_usegooglesheet",
+      "hooks_usegooglesheet_usegooglesheet"
+    ],
+    "7": [
+      "ref_mts",
+      "ref_next_dev_types_ts",
+      "ref_next_env_d_ts",
+      "ref_next_types_ts",
+      "ref_node_modules",
+      "ref_ts",
+      "ref_tsx",
+      "tsconfig",
+      "tsconfig_exclude",
+      "tsconfig_include"
+    ],
+    "8": [
+      "eslint_config",
+      "eslint_config_eslintconfig"
+    ],
+    "9": [
+      "next_config",
+      "next_config_nextconfig"
+    ],
+    "10": [
+      "postcss_config",
+      "postcss_config_config"
+    ]
+  },
+  "cohesion": {
+    "0": 0.07557354925775979,
+    "1": 0.13333333333333333,
+    "2": 0.12333333333333334,
+    "3": 0.1,
+    "4": 0.1,
+    "5": 0.11764705882352941,
+    "6": 0.20512820512820512,
+    "7": 0.2,
+    "8": 1.0,
+    "9": 1.0,
+    "10": 1.0
+  },
+  "gods": [
+    {
+      "id": "hooks_types_menuitem",
+      "label": "MenuItem",
+      "degree": 24
+    },
+    {
+      "id": "context_sitecontext_usesite",
+      "label": "useSite()",
+      "degree": 23
+    },
+    {
+      "id": "tsconfig_compileroptions",
+      "label": "compilerOptions",
+      "degree": 17
+    },
+    {
+      "id": "tsconfig_include",
+      "label": "include",
+      "degree": 7
+    },
+    {
+      "id": "package_scripts",
+      "label": "scripts",
+      "degree": 5
+    },
+    {
+      "id": "utils_excelexport_exportsingletoexcel",
+      "label": "exportSingleToExcel()",
+      "degree": 5
+    },
+    {
+      "id": "utils_excelexport_exportbothtoexcel",
+      "label": "exportBothToExcel()",
+      "degree": 5
+    },
+    {
+      "id": "app_tbb_page_adminpage",
+      "label": "AdminPage()",
+      "degree": 4
+    },
+    {
+      "id": "package_dependencies_xlsx",
+      "label": "xlsx",
+      "degree": 4
+    },
+    {
+      "id": "tsconfig_compileroptions_lib",
+      "label": "lib",
+      "degree": 4
+    }
+  ],
+  "surprises": [
+    {
+      "source": "ProductModalProps",
+      "target": "MenuItem",
+      "source_files": [
+        "components/ProductModal.tsx",
+        "hooks/types.ts"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "references",
+      "why": "connects across different repos/directories; bridges separate communities; peripheral node `ProductModalProps` unexpectedly reaches hub `MenuItem`"
+    },
+    {
+      "source": "AboutPage()",
+      "target": "useSite()",
+      "source_files": [
+        "app/about/page.tsx",
+        "context/SiteContext.tsx"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories; peripheral node `AboutPage()` unexpectedly reaches hub `useSite()`"
+    },
+    {
+      "source": "ContactPage()",
+      "target": "useSite()",
+      "source_files": [
+        "app/contact/page.tsx",
+        "context/SiteContext.tsx"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories; peripheral node `ContactPage()` unexpectedly reaches hub `useSite()`"
+    },
+    {
+      "source": "CustomCakesPage()",
+      "target": "useSite()",
+      "source_files": [
+        "app/customcakes/page.tsx",
+        "context/SiteContext.tsx"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories; peripheral node `CustomCakesPage()` unexpectedly reaches hub `useSite()`"
+    },
+    {
+      "source": "Home()",
+      "target": "useSite()",
+      "source_files": [
+        "app/page.tsx",
+        "context/SiteContext.tsx"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories; bridges separate communities"
+    }
+  ],
+  "questions": [
+    {
+      "type": "bridge_node",
+      "question": "Why does `dependencies` connect `Community 3` to `Community 2`?",
+      "why": "High betweenness centrality (0.075) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `useSite()` connect `Community 0` to `Community 1`, `Community 6`?",
+      "why": "High betweenness centrality (0.068) - this node is a cross-community bridge."
+    },
+    {
+      "type": "bridge_node",
+      "question": "Why does `xlsx` connect `Community 2` to `Community 3`?",
+      "why": "High betweenness centrality (0.057) - this node is a cross-community bridge."
+    },
+    {
+      "type": "isolated_nodes",
+      "question": "What connects `playfair`, `jakarta`, `metadata` to the rest of the system?",
+      "why": "61 weakly-connected nodes found - possible documentation gaps or missing edges."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 0` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.07557354925775979 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 1` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.13333333333333333 - nodes in this community are weakly interconnected."
+    },
+    {
+      "type": "low_cohesion",
+      "question": "Should `Community 2` be split into smaller, more focused modules?",
+      "why": "Cohesion score 0.12333333333333334 - nodes in this community are weakly interconnected."
+    }
+  ]
+}

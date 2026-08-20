@@ -78,7 +78,7 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 14px;
-  gap: 8px;
+  gap: 6px;
 }
 
 .custom-datepicker-nav-btn {
@@ -86,7 +86,10 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: #94a3b8;
   cursor: pointer;
-  padding: 6px 10px;
+  padding: 6px 8px;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
   border-radius: 8px;
   display: flex;
   align-items: center;
@@ -102,8 +105,9 @@
 
 .custom-datepicker-selectors {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   flex-grow: 1;
+  min-width: 0;
 }
 
 .custom-datepicker-select {
@@ -111,13 +115,14 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #f3f4f6;
   border-radius: 8px;
-  padding: 6px 8px;
-  font-size: 13px;
+  padding: 6px 4px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
   outline: none;
   transition: all 0.15s ease;
   flex: 1;
+  min-width: 0;
   text-align: center;
 }
 
@@ -127,7 +132,7 @@
 }
 
 .custom-datepicker-select.month-select {
-  flex: 1.4;
+  flex: 1.2;
 }
 
 .custom-datepicker-select.year-select {
