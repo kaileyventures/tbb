@@ -102,13 +102,28 @@ export default function AdminPage() {
   // Toast Notification Pop-up State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Filters & Search & Pagination
+  // Filters & Search & Pagination State
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
   const [ledgerFilter, setLedgerFilter] = useState<'all' | 'sales' | 'purchases' | 'trash'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
+
+  // Column Sorting State
+  type SortField = 'type' | 'date' | 'item_name' | 'category' | 'quantity' | 'unit_price' | 'total_amount' | 'details' | 'createdTimestamp';
+  const [sortField, setSortField] = useState<SortField>('createdTimestamp');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // Helper to toggle column sorting
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortOrder(prev => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
 
   // Modal States
   const [showSaleModal, setShowSaleModal] = useState(false);
@@ -509,7 +524,44 @@ export default function AdminPage() {
   const unifiedEntries: UnifiedEntry[] = [
     ...sales.map(s => ({ type: 'sale' as const, data: s, id: `sale-${s.id}`, date: s.date, createdTimestamp: getTimestamp(s) })),
     ...purchases.map(p => ({ type: 'purchase' as const, data: p, id: `pur-${p.id}`, date: p.date, createdTimestamp: getTimestamp(p) }))
-  ].sort((a, b) => b.createdTimestamp - a.createdTimestamp);
+  ].sort((a, b) => {
+    let valA: any;
+    let valB: any;
+
+    if (sortField === 'type') {
+      valA = a.type;
+      valB = b.type;
+    } else if (sortField === 'date') {
+      valA = a.date;
+      valB = b.date;
+    } else if (sortField === 'item_name') {
+      valA = a.data.item_name.toLowerCase();
+      valB = b.data.item_name.toLowerCase();
+    } else if (sortField === 'category') {
+      valA = a.data.category.toLowerCase();
+      valB = b.data.category.toLowerCase();
+    } else if (sortField === 'quantity') {
+      valA = Number(a.data.quantity) || 0;
+      valB = Number(b.data.quantity) || 0;
+    } else if (sortField === 'unit_price') {
+      valA = Number(a.data.unit_price) || 0;
+      valB = Number(b.data.unit_price) || 0;
+    } else if (sortField === 'total_amount') {
+      valA = Number(a.data.total_amount) || 0;
+      valB = Number(b.data.total_amount) || 0;
+    } else if (sortField === 'details') {
+      valA = a.type === 'sale' ? (a.data as SaleEntry).payment_method : (a.data as PurchaseEntry).payment_status;
+      valB = b.type === 'sale' ? (b.data as SaleEntry).payment_method : (b.data as PurchaseEntry).payment_status;
+    } else {
+      // createdTimestamp
+      valA = a.createdTimestamp;
+      valB = b.createdTimestamp;
+    }
+
+    if (valA < valB) return sortOrder === 'asc' ? -1 : 1;
+    if (valA > valB) return sortOrder === 'asc' ? 1 : -1;
+    return 0;
+  });
 
   const filteredUnified = unifiedEntries.filter((item) => {
     // 1. Ledger type filter
@@ -1236,7 +1288,7 @@ export default function AdminPage() {
 
           <div style={{ display: 'flex', alignItems: 'flex-end' }}>
             <button
-              onClick={() => { setSearchTerm(''); setFilterStartDate(''); setFilterEndDate(''); setLedgerFilter('all'); setPageSize(30); }}
+              onClick={() => { setSearchTerm(''); setFilterStartDate(''); setFilterEndDate(''); setLedgerFilter('all'); setPageSize(30); setSortField('createdTimestamp'); setSortOrder('desc'); }}
               style={{ width: '100%', padding: '6px 8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#94a3b8', fontSize: '12px', fontWeight: '600', cursor: 'pointer', height: '32px', transition: 'all 0.15s' }}>
               Reset Filters
             </button>
@@ -1333,15 +1385,33 @@ export default function AdminPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#64748b', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  <th style={{ padding: '8px 10px' }}>Type</th>
-                  <th style={{ padding: '8px 10px' }}>Txn Date</th>
-                  <th style={{ padding: '8px 10px' }}>Item / Description</th>
-                  <th style={{ padding: '8px 10px' }}>Category</th>
-                  <th style={{ padding: '8px 10px' }}>Qty</th>
-                  <th style={{ padding: '8px 10px' }}>Unit Rate</th>
-                  <th style={{ padding: '8px 10px' }}>Total Amount</th>
-                  <th style={{ padding: '8px 10px' }}>Details / Status</th>
-                  <th style={{ padding: '8px 10px' }}>Entry Created</th>
+                  <th className="sortable-header" onClick={() => handleSort('type')} style={{ padding: '8px 10px' }}>
+                    Type {sortField === 'type' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                  </th>
+                  <th className="sortable-header" onClick={() => handleSort('date')} style={{ padding: '8px 10px' }}>
+                    Txn Date {sortField === 'date' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                  </th>
+                  <th className="sortable-header" onClick={() => handleSort('item_name')} style={{ padding: '8px 10px' }}>
+                    Item / Description {sortField === 'item_name' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                  </th>
+                  <th className="sortable-header" onClick={() => handleSort('category')} style={{ padding: '8px 10px' }}>
+                    Category {sortField === 'category' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                  </th>
+                  <th className="sortable-header" onClick={() => handleSort('quantity')} style={{ padding: '8px 10px' }}>
+                    Qty {sortField === 'quantity' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                  </th>
+                  <th className="sortable-header" onClick={() => handleSort('unit_price')} style={{ padding: '8px 10px' }}>
+                    Unit Rate {sortField === 'unit_price' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                  </th>
+                  <th className="sortable-header" onClick={() => handleSort('total_amount')} style={{ padding: '8px 10px' }}>
+                    Total Amount {sortField === 'total_amount' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                  </th>
+                  <th className="sortable-header" onClick={() => handleSort('details')} style={{ padding: '8px 10px' }}>
+                    Details / Status {sortField === 'details' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                  </th>
+                  <th className="sortable-header" onClick={() => handleSort('createdTimestamp')} style={{ padding: '8px 10px' }}>
+                    Entry Created {sortField === 'createdTimestamp' ? (sortOrder === 'asc' ? '▲' : '▼') : '↕'}
+                  </th>
                   <th style={{ padding: '8px 10px', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>

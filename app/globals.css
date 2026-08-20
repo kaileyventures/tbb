@@ -151,6 +151,32 @@ h1, h2, h3, h4, .font-serif-heading {
   box-shadow: 0 10px 25px -5px rgba(122, 26, 64, 0.4);
 }
 
+/* Global Button Hover & Click Responsive Micro-Animations */
+button {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1.5px) scale(1.02);
+  filter: brightness(1.12);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+  filter: brightness(0.95);
+}
+
+th.sortable-header {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+th.sortable-header:hover {
+  color: #38bdf8 !important;
+  background: rgba(255, 255, 255, 0.04);
+}
+
 /* Card lift effects */
 .luxury-card {
   transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
