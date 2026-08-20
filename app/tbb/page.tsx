@@ -10,20 +10,15 @@ import {
   ShoppingBag, 
   PlusCircle, 
   FileSpreadsheet, 
-  Calendar, 
   Trash2, 
   Search, 
-  Filter, 
   ArrowUpRight, 
   ArrowDownRight,
   Database,
-  CheckCircle2,
-  RefreshCw,
-  Edit2
+  Lock
 } from 'lucide-react';
 
-// Initial Mock Data to allow testing immediately before Supabase config
-  const INITIAL_SALES: SaleEntry[] = [
+const INITIAL_SALES: SaleEntry[] = [
   { id: '1', date: '2026-08-20', item_name: 'Chocolate Truffle Cake', category: 'Cakes', quantity: 2, unit_price: 550.00, total_amount: 1100.00, payment_method: 'UPI', notes: 'Birthday order' },
   { id: '2', date: '2026-08-19', item_name: 'Almond Croissant', category: 'Pastries', quantity: 6, unit_price: 120.00, total_amount: 720.00, payment_method: 'Card', notes: 'Morning walk-in' },
   { id: '3', date: '2026-08-18', item_name: 'Red Velvet Cupcake Set', category: 'Cupcakes', quantity: 1, unit_price: 450.00, total_amount: 450.00, payment_method: 'Cash', notes: 'Party set' },
@@ -38,6 +33,11 @@ const INITIAL_PURCHASES: PurchaseEntry[] = [
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'sales' | 'purchases' | 'analytics' | 'supabase'>('sales');
+
+  // Password Authentication State
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [inputPassword, setInputPassword] = useState<string>('');
+  const [authError, setAuthError] = useState<string>('');
 
   // Data States
   const [sales, setSales] = useState<SaleEntry[]>(INITIAL_SALES);
@@ -77,10 +77,30 @@ export default function AdminPage() {
     notes: ''
   });
 
-  // Fetch Supabase data on mount if configured
   useEffect(() => {
-    fetchFromSupabase();
+    const savedAuth = sessionStorage.getItem('tbb_admin_auth');
+    if (savedAuth === 'true') {
+      setIsAuthenticated(true);
+    }
   }, []);
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const adminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'admin123';
+    if (inputPassword === adminPassword) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem('tbb_admin_auth', 'true');
+      setAuthError('');
+    } else {
+      setAuthError('Incorrect Password. Please try again.');
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      fetchFromSupabase();
+    }
+  }, [isAuthenticated]);
 
   const fetchFromSupabase = async () => {
     if (!supabase) {
@@ -103,7 +123,6 @@ export default function AdminPage() {
     }
   };
 
-  // Create Sale Entry
   const handleAddSale = async (e: React.FormEvent) => {
     e.preventDefault();
     const total_amount = saleForm.quantity * saleForm.unit_price;
@@ -116,7 +135,6 @@ export default function AdminPage() {
 
     if (supabase) {
       try {
-        // Exclude local string ID so Supabase uses default gen_random_uuid()
         const { id, ...salePayload } = savedEntry;
         const { data, error } = await supabase.from('sales').insert([salePayload]).select();
         if (error) {
@@ -144,7 +162,6 @@ export default function AdminPage() {
     });
   };
 
-  // Create Purchase Entry
   const handleAddPurchase = async (e: React.FormEvent) => {
     e.preventDefault();
     const total_amount = purchaseForm.quantity * purchaseForm.unit_price;
@@ -157,7 +174,6 @@ export default function AdminPage() {
 
     if (supabase) {
       try {
-        // Exclude local string ID so Supabase uses default gen_random_uuid()
         const { id, ...purchasePayload } = savedEntry;
         const { data, error } = await supabase.from('purchases').insert([purchasePayload]).select();
         if (error) {
@@ -186,7 +202,6 @@ export default function AdminPage() {
     });
   };
 
-  // Delete Entry
   const handleDeleteSale = async (id: string) => {
     if (!confirm('Are you sure you want to delete this sale entry?')) return;
     if (supabase) {
@@ -203,8 +218,7 @@ export default function AdminPage() {
     setPurchases(purchases.filter(p => p.id !== id));
   };
 
-  // Filter Helpers
-  const filteredSales = sales.filter(s => {
+  const filteredSales = sales.filter((s: SaleEntry) => {
     const matchesSearch = s.item_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           s.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           s.payment_method.toLowerCase().includes(searchTerm.toLowerCase());
@@ -213,7 +227,7 @@ export default function AdminPage() {
     return matchesSearch && matchesStart && matchesEnd;
   });
 
-  const filteredPurchases = purchases.filter(p => {
+  const filteredPurchases = purchases.filter((p: PurchaseEntry) => {
     const matchesSearch = p.item_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           p.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           p.category.toLowerCase().includes(searchTerm.toLowerCase());
@@ -222,10 +236,49 @@ export default function AdminPage() {
     return matchesSearch && matchesStart && matchesEnd;
   });
 
-  // Calculate Metrics
-  const totalSalesAmount = sales.reduce((acc, curr) => acc + curr.total_amount, 0);
-  const totalPurchaseAmount = purchases.reduce((acc, curr) => acc + curr.total_amount, 0);
+  const totalSalesAmount = sales.reduce((acc: number, curr: SaleEntry) => acc + curr.total_amount, 0);
+  const totalPurchaseAmount = purchases.reduce((acc: number, curr: PurchaseEntry) => acc + curr.total_amount, 0);
   const netProfit = totalSalesAmount - totalPurchaseAmount;
+
+  if (!isAuthenticated) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#0b0f19', color: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter, system-ui, sans-serif', padding: '20px' }}>
+        <div style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '24px', padding: '40px 32px', width: '100%', maxWidth: '420px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.7)' }}>
+          <div style={{ width: '56px', height: '56px', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fbbf24', margin: '0 auto 20px auto' }}>
+            <Lock size={28} />
+          </div>
+          <h2 style={{ fontSize: '24px', fontWeight: '800', margin: '0 0 8px 0', background: 'linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            Admin Access Protected
+          </h2>
+          <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '28px', lineHeight: '1.5' }}>
+            Enter your secret Admin password to unlock The Baker Bro dashboard.
+          </p>
+
+          <form onSubmit={handlePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <input 
+              type="password" required
+              placeholder="Enter Admin Password..."
+              value={inputPassword}
+              onChange={(e) => setInputPassword(e.target.value)}
+              style={{ width: '100%', padding: '14px 16px', background: '#1f2937', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '12px', color: '#fff', fontSize: '15px', outline: 'none', textAlign: 'center', letterSpacing: '0.1em' }}
+            />
+
+            {authError && (
+              <div style={{ color: '#f87171', fontSize: '13px', background: 'rgba(239, 68, 68, 0.1)', padding: '10px', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                {authError}
+              </div>
+            )}
+
+            <button 
+              type="submit"
+              style={{ width: '100%', padding: '14px', background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', border: 'none', borderRadius: '12px', color: '#fff', fontWeight: '700', fontSize: '15px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(245, 158, 11, 0.3)', transition: 'transform 0.15s ease' }}>
+              Unlock Dashboard
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: '#0b0f19', color: '#f1f5f9', fontFamily: 'Inter, system-ui, sans-serif', padding: '32px 24px' }}>
@@ -497,7 +550,7 @@ export default function AdminPage() {
                     <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>No sale entries found matching your filter criteria.</td>
                   </tr>
                 ) : (
-                  filteredSales.map((sale) => (
+                  filteredSales.map((sale: SaleEntry) => (
                     <tr key={sale.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.15s' }}>
                       <td style={{ padding: '14px 16px', fontWeight: '600', color: '#f59e0b' }}>{sale.date}</td>
                       <td style={{ padding: '14px 16px', fontWeight: '700', color: '#f8fafc' }}>{sale.item_name}</td>
@@ -553,7 +606,7 @@ export default function AdminPage() {
                     <td colSpan={9} style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>No purchase entries found.</td>
                   </tr>
                 ) : (
-                  filteredPurchases.map((purchase) => (
+                  filteredPurchases.map((purchase: PurchaseEntry) => (
                     <tr key={purchase.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.15s' }}>
                       <td style={{ padding: '14px 16px', fontWeight: '600', color: '#818cf8' }}>{purchase.date}</td>
                       <td style={{ padding: '14px 16px', fontWeight: '700', color: '#f8fafc' }}>{purchase.item_name}</td>
@@ -638,7 +691,8 @@ CREATE TABLE purchases (
               <p style={{ color: '#cbd5e1', fontSize: '13px', marginTop: '6px' }}>Add these variables to your <code>.env.local</code> file in your project root:</p>
               <code style={{ display: 'block', background: '#1e293b', padding: '10px', borderRadius: '8px', color: '#f1f5f9', marginTop: '8px', fontSize: '13px' }}>
                 NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co<br />
-                NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here
+                NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here<br />
+                NEXT_PUBLIC_ADMIN_PASSWORD=your-secret-password
               </code>
             </div>
           </div>

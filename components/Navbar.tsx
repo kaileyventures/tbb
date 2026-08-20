@@ -35,14 +35,14 @@ export default function Navbar() {
     ? [
         { name: 'Home', path: '/' },
         { name: 'Custom Cakes', path: '/customcakes' },
-        { name: 'Admin Panel', path: '/admin' },
+        { name: 'Admin Panel', path: '/tbb' },
         { name: 'Contact', path: '/contact' },
         { name: 'About Us', path: '/about' }
       ]
     : [
         { name: 'Home', path: '/' },
         { name: 'Party Orders', path: '/customcakes' },
-        { name: 'Admin Panel', path: '/admin' },
+        { name: 'Admin Panel', path: '/tbb' },
         { name: 'Contact', path: '/contact' },
         { name: 'About Us', path: '/about' }
       ];
