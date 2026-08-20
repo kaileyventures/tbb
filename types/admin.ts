@@ -1,9 +1,12 @@
+export type QuantityUnit = 'Pcs' | 'KG' | 'Grams' | 'Packet' | 'Unit' | 'Litre' | 'Box';
+
 export interface SaleEntry {
   id: string;
   date: string;
   item_name: string;
   category: string;
   quantity: number;
+  unit?: QuantityUnit | string;
   unit_price: number;
   total_amount: number;
   payment_method: 'Cash' | 'Card' | 'UPI' | 'Bank Transfer';
@@ -18,6 +21,7 @@ export interface PurchaseEntry {
   supplier: string;
   category: string;
   quantity: number;
+  unit?: QuantityUnit | string;
   unit_price: number;
   total_amount: number;
   payment_status: 'Paid' | 'Pending' | 'Partial';

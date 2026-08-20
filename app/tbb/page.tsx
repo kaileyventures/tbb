@@ -55,6 +55,37 @@ const formatDateFormatted = (dateStr: string) => {
   return `${day}-${month}-${year}, ${dayName}`;
 };
 
+// Helper to format ISO timestamp or created_at into "DD-MMM-YYYY, hh:mm AM/PM" format
+const formatEntryFullDateTime = (createdAt?: string, fallbackId?: string): string => {
+  let d: Date | null = null;
+  if (createdAt) {
+    const parsed = new Date(createdAt);
+    if (!isNaN(parsed.getTime())) d = parsed;
+  }
+  if (!d && fallbackId && !isNaN(Number(fallbackId)) && fallbackId.length >= 10) {
+    const parsed = new Date(Number(fallbackId));
+    if (!isNaN(parsed.getTime())) d = parsed;
+  }
+  if (!d) return '-';
+
+  const day = String(d.getDate()).padStart(2, '0');
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = monthNames[d.getMonth()];
+  const year = d.getFullYear();
+  const timeStr = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+  return `${day}-${month}-${year}, ${timeStr}`;
+};
+
+// Helper to format numbers in Indian currency format (e.g., 1,00,00,000)
+const formatIndianCurrency = (amount: number, showDecimals: boolean = true): string => {
+  if (isNaN(amount) || amount === null || amount === undefined) return showDecimals ? '0.00' : '0';
+  return amount.toLocaleString('en-IN', {
+    minimumFractionDigits: showDecimals ? 2 : 0,
+    maximumFractionDigits: showDecimals ? 2 : 0
+  });
+};
+
 export default function AdminPage() {
   // Password Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -197,6 +228,7 @@ export default function AdminPage() {
     item_name: '',
     category: 'Cakes',
     quantity: '' as string | number,
+    unit: 'Pcs' as string,
     unit_price: '' as string | number,
     payment_method: 'Card' as const,
     notes: ''
@@ -209,10 +241,15 @@ export default function AdminPage() {
     supplier: '',
     category: 'Raw Materials',
     quantity: '' as string | number,
+    unit: 'Unit' as string,
     unit_price: '' as string | number,
     payment_status: 'Paid' as const,
     notes: ''
   });
+
+  // Quick Data Entry State (Sale / Purchase toggle & saving indicator)
+  const [quickEntryType, setQuickEntryType] = useState<'sale' | 'purchase'>('sale');
+  const [isSavingQuickEntry, setIsSavingQuickEntry] = useState(false);
 
   useEffect(() => {
     const savedAuth = sessionStorage.getItem('tbb_admin_auth');
@@ -269,6 +306,7 @@ export default function AdminPage() {
         item_name: sale.item_name,
         category: sale.category,
         quantity: sale.quantity,
+        unit: sale.unit || 'Pcs',
         unit_price: sale.unit_price,
         payment_method: sale.payment_method as any,
         notes: sale.notes || ''
@@ -280,6 +318,7 @@ export default function AdminPage() {
         item_name: '',
         category: 'Cakes',
         quantity: '',
+        unit: 'Pcs',
         unit_price: '',
         payment_method: 'Card',
         notes: ''
@@ -298,6 +337,7 @@ export default function AdminPage() {
         supplier: purchase.supplier,
         category: purchase.category,
         quantity: purchase.quantity,
+        unit: purchase.unit || 'Unit',
         unit_price: purchase.unit_price,
         payment_status: purchase.payment_status as any,
         notes: purchase.notes || ''
@@ -310,6 +350,7 @@ export default function AdminPage() {
         supplier: '',
         category: 'Raw Materials',
         quantity: '',
+        unit: 'Unit',
         unit_price: '',
         payment_status: 'Paid',
         notes: ''
@@ -321,79 +362,110 @@ export default function AdminPage() {
   // Save (Create or Update) Sale Entry
   const handleSaveSale = async (e: React.FormEvent) => {
     e.preventDefault();
-    const qty = Number(saleForm.quantity) || 0;
-    const price = Number(saleForm.unit_price) || 0;
-    const total_amount = qty * price;
+    setIsSavingQuickEntry(true);
 
-    const payloadForm = {
-      ...saleForm,
-      quantity: qty,
-      unit_price: price
-    };
+    try {
+      const qty = Number(saleForm.quantity) || 0;
+      const price = Number(saleForm.unit_price) || 0;
+      const total_amount = qty * price;
 
-    if (editingSale) {
-      // UPDATE
-      const updatedEntry: SaleEntry = { ...editingSale, ...payloadForm, total_amount };
-      if (supabase) {
-        await supabase.from('sales').update(payloadForm).eq('id', editingSale.id);
-      }
-      setSales(sales.map(s => s.id === editingSale.id ? updatedEntry : s));
-    } else {
-      // CREATE
-      let newEntry: SaleEntry = { id: Date.now().toString(), ...payloadForm, total_amount };
-      if (supabase) {
-        const { id, ...payload } = newEntry;
-        const { data, error } = await supabase.from('sales').insert([payload]).select();
-        if (error) {
-          alert('Supabase Error: ' + error.message);
-          return;
+      const payloadForm = {
+        ...saleForm,
+        quantity: qty,
+        unit_price: price
+      };
+
+      if (editingSale) {
+        // UPDATE
+        const updatedEntry: SaleEntry = { ...editingSale, ...payloadForm, total_amount };
+        if (supabase) {
+          await supabase.from('sales').update(payloadForm).eq('id', editingSale.id);
         }
-        if (data && data.length > 0) newEntry = data[0];
+        setSales(sales.map(s => s.id === editingSale.id ? updatedEntry : s));
+        triggerToast(`✏️ Sale entry "${saleForm.item_name}" updated successfully.`);
+      } else {
+        // CREATE
+        let newEntry: SaleEntry = { id: Date.now().toString(), ...payloadForm, total_amount };
+        if (supabase) {
+          const { id, ...payload } = newEntry;
+          const { data, error } = await supabase.from('sales').insert([payload]).select();
+          if (error) {
+            alert('Supabase Error: ' + error.message);
+            return;
+          }
+          if (data && data.length > 0) newEntry = data[0];
+        }
+        setSales([newEntry, ...sales]);
+        triggerToast(`✅ Sale entry "${saleForm.item_name}" added successfully.`);
       }
-      setSales([newEntry, ...sales]);
-    }
 
-    setShowSaleModal(false);
-    setEditingSale(null);
+      setShowSaleModal(false);
+      setEditingSale(null);
+      setSaleForm(prev => ({
+        ...prev,
+        item_name: '',
+        quantity: '',
+        unit_price: '',
+        notes: ''
+      }));
+    } finally {
+      setIsSavingQuickEntry(false);
+    }
   };
 
   // Save (Create or Update) Purchase Entry
   const handleSavePurchase = async (e: React.FormEvent) => {
     e.preventDefault();
-    const qty = Number(purchaseForm.quantity) || 0;
-    const price = Number(purchaseForm.unit_price) || 0;
-    const total_amount = qty * price;
+    setIsSavingQuickEntry(true);
 
-    const payloadForm = {
-      ...purchaseForm,
-      quantity: qty,
-      unit_price: price
-    };
+    try {
+      const qty = Number(purchaseForm.quantity) || 0;
+      const price = Number(purchaseForm.unit_price) || 0;
+      const total_amount = qty * price;
 
-    if (editingPurchase) {
-      // UPDATE
-      const updatedEntry: PurchaseEntry = { ...editingPurchase, ...payloadForm, total_amount };
-      if (supabase) {
-        await supabase.from('purchases').update(payloadForm).eq('id', editingPurchase.id);
-      }
-      setPurchases(purchases.map(p => p.id === editingPurchase.id ? updatedEntry : p));
-    } else {
-      // CREATE
-      let newEntry: PurchaseEntry = { id: Date.now().toString(), ...payloadForm, total_amount };
-      if (supabase) {
-        const { id, ...payload } = newEntry;
-        const { data, error } = await supabase.from('purchases').insert([payload]).select();
-        if (error) {
-          alert('Supabase Error: ' + error.message);
-          return;
+      const payloadForm = {
+        ...purchaseForm,
+        quantity: qty,
+        unit_price: price
+      };
+
+      if (editingPurchase) {
+        // UPDATE
+        const updatedEntry: PurchaseEntry = { ...editingPurchase, ...payloadForm, total_amount };
+        if (supabase) {
+          await supabase.from('purchases').update(payloadForm).eq('id', editingPurchase.id);
         }
-        if (data && data.length > 0) newEntry = data[0];
+        setPurchases(purchases.map(p => p.id === editingPurchase.id ? updatedEntry : p));
+        triggerToast(`✏️ Purchase entry "${purchaseForm.item_name}" updated successfully.`);
+      } else {
+        // CREATE
+        let newEntry: PurchaseEntry = { id: Date.now().toString(), ...payloadForm, total_amount };
+        if (supabase) {
+          const { id, ...payload } = newEntry;
+          const { data, error } = await supabase.from('purchases').insert([payload]).select();
+          if (error) {
+            alert('Supabase Error: ' + error.message);
+            return;
+          }
+          if (data && data.length > 0) newEntry = data[0];
+        }
+        setPurchases([newEntry, ...purchases]);
+        triggerToast(`✅ Purchase entry "${purchaseForm.item_name}" added successfully.`);
       }
-      setPurchases([newEntry, ...purchases]);
-    }
 
-    setShowPurchaseModal(false);
-    setEditingPurchase(null);
+      setShowPurchaseModal(false);
+      setEditingPurchase(null);
+      setPurchaseForm(prev => ({
+        ...prev,
+        item_name: '',
+        supplier: '',
+        quantity: '',
+        unit_price: '',
+        notes: ''
+      }));
+    } finally {
+      setIsSavingQuickEntry(false);
+    }
   };
 
 
@@ -416,14 +488,26 @@ export default function AdminPage() {
   });
 
   // Unified combined items type
-  type UnifiedEntry = 
-    | { type: 'sale'; data: SaleEntry; id: string; date: string }
-    | { type: 'purchase'; data: PurchaseEntry; id: string; date: string };
+  type UnifiedEntry =
+    | { type: 'sale'; data: SaleEntry; id: string; date: string; createdTimestamp: number }
+    | { type: 'purchase'; data: PurchaseEntry; id: string; date: string; createdTimestamp: number };
+
+  const getTimestamp = (item: SaleEntry | PurchaseEntry): number => {
+    if (item.created_at) {
+      const t = new Date(item.created_at).getTime();
+      if (!isNaN(t)) return t;
+    }
+    if (item.id && !isNaN(Number(item.id))) {
+      return Number(item.id);
+    }
+    const d = new Date(item.date).getTime();
+    return isNaN(d) ? 0 : d;
+  };
 
   const unifiedEntries: UnifiedEntry[] = [
-    ...sales.map(s => ({ type: 'sale' as const, data: s, id: `sale-${s.id}`, date: s.date })),
-    ...purchases.map(p => ({ type: 'purchase' as const, data: p, id: `pur-${p.id}`, date: p.date }))
-  ].sort((a, b) => (a.date < b.date ? 1 : -1));
+    ...sales.map(s => ({ type: 'sale' as const, data: s, id: `sale-${s.id}`, date: s.date, createdTimestamp: getTimestamp(s) })),
+    ...purchases.map(p => ({ type: 'purchase' as const, data: p, id: `pur-${p.id}`, date: p.date, createdTimestamp: getTimestamp(p) }))
+  ].sort((a, b) => b.createdTimestamp - a.createdTimestamp);
 
   const filteredUnified = unifiedEntries.filter((item) => {
     // 1. Ledger type filter
@@ -593,7 +677,7 @@ export default function AdminPage() {
             </div>
           </div>
           <div style={{ fontSize: '20px', fontWeight: '800', marginTop: '6px', color: '#f8fafc' }}>
-            ₹{totalSalesAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            ₹{formatIndianCurrency(totalSalesAmount)}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '11px', color: '#4ade80' }}>
             <ArrowUpRight size={12} /> {filteredSales.length} total transaction entries
@@ -608,7 +692,7 @@ export default function AdminPage() {
             </div>
           </div>
           <div style={{ fontSize: '20px', fontWeight: '800', marginTop: '6px', color: '#f8fafc' }}>
-            ₹{totalPurchaseAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            ₹{formatIndianCurrency(totalPurchaseAmount)}
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '11px', color: '#f87171' }}>
             <ArrowDownRight size={12} /> {filteredPurchases.length} raw material & supply orders
@@ -623,13 +707,364 @@ export default function AdminPage() {
             </div>
           </div>
           <div style={{ fontSize: '20px', fontWeight: '800', marginTop: '6px', color: netProfit >= 0 ? '#fbbf24' : '#f87171' }}>
-            ₹{netProfit.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+            ₹{formatIndianCurrency(netProfit)}
           </div>
           <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
             Sales revenue minus purchase costs
           </div>
         </div>
 
+      </div>
+
+      {/* Always-Active Quick Data Entry Bar */}
+      <div style={{
+        maxWidth: '1400px',
+        margin: '0 auto 16px auto',
+        background: quickEntryType === 'sale'
+          ? 'linear-gradient(145deg, rgba(17, 24, 39, 0.95) 0%, rgba(30, 27, 22, 0.95) 100%)'
+          : 'linear-gradient(145deg, rgba(17, 24, 39, 0.95) 0%, rgba(24, 25, 45, 0.95) 100%)',
+        border: `1px solid ${quickEntryType === 'sale' ? 'rgba(245, 158, 11, 0.4)' : 'rgba(99, 102, 241, 0.4)'}`,
+        borderRadius: '16px',
+        padding: '16px 20px',
+        boxShadow: quickEntryType === 'sale'
+          ? '0 10px 30px -5px rgba(245, 158, 11, 0.15), 0 4px 20px rgba(0,0,0,0.5)'
+          : '0 10px 30px -5px rgba(99, 102, 241, 0.15), 0 4px 20px rgba(0,0,0,0.5)',
+        backdropFilter: 'blur(16px)',
+        transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '26px',
+              height: '26px',
+              borderRadius: '8px',
+              background: quickEntryType === 'sale' ? 'rgba(245, 158, 11, 0.2)' : 'rgba(99, 102, 241, 0.2)',
+              border: `1px solid ${quickEntryType === 'sale' ? 'rgba(245, 158, 11, 0.4)' : 'rgba(99, 102, 241, 0.4)'}`,
+              color: quickEntryType === 'sale' ? '#fbbf24' : '#818cf8'
+            }}>
+              {quickEntryType === 'sale' ? <TrendingUp size={14} /> : <ShoppingBag size={14} />}
+            </div>
+            <div>
+              <span style={{ fontSize: '13px', fontWeight: '800', color: '#f8fafc', letterSpacing: '0.02em', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                ⚡ Quick Data Entry
+                <span style={{
+                  fontSize: '10px',
+                  fontWeight: '700',
+                  padding: '2px 8px',
+                  borderRadius: '20px',
+                  background: quickEntryType === 'sale' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(99, 102, 241, 0.15)',
+                  color: quickEntryType === 'sale' ? '#fbbf24' : '#818cf8',
+                  border: `1px solid ${quickEntryType === 'sale' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(99, 102, 241, 0.3)'}`,
+                  textTransform: 'uppercase'
+                }}>
+                  {quickEntryType === 'sale' ? 'Sale Mode' : 'Purchase Mode'}
+                </span>
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', background: 'rgba(15, 23, 42, 0.8)', borderRadius: '10px', padding: '3px', border: '1px solid rgba(255,255,255,0.08)' }}>
+            <button
+              type="button"
+              onClick={() => setQuickEntryType('sale')}
+              style={{
+                padding: '5px 14px',
+                background: quickEntryType === 'sale' ? 'linear-gradient(135deg, rgba(245, 158, 11, 0.25) 0%, rgba(217, 119, 6, 0.25) 100%)' : 'transparent',
+                border: quickEntryType === 'sale' ? '1px solid rgba(245, 158, 11, 0.5)' : '1px solid transparent',
+                borderRadius: '7px',
+                color: quickEntryType === 'sale' ? '#fbbf24' : '#94a3b8',
+                fontSize: '11px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: quickEntryType === 'sale' ? '0 2px 8px rgba(245, 158, 11, 0.2)' : 'none'
+              }}>
+              Sale Entry
+            </button>
+            <button
+              type="button"
+              onClick={() => setQuickEntryType('purchase')}
+              style={{
+                padding: '5px 14px',
+                background: quickEntryType === 'purchase' ? 'linear-gradient(135deg, rgba(99, 102, 241, 0.25) 0%, rgba(79, 70, 229, 0.25) 100%)' : 'transparent',
+                border: quickEntryType === 'purchase' ? '1px solid rgba(99, 102, 241, 0.5)' : '1px solid transparent',
+                borderRadius: '7px',
+                color: quickEntryType === 'purchase' ? '#818cf8' : '#94a3b8',
+                fontSize: '11px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                boxShadow: quickEntryType === 'purchase' ? '0 2px 8px rgba(99, 102, 241, 0.2)' : 'none'
+              }}>
+              Purchase Entry
+            </button>
+          </div>
+        </div>
+
+        {quickEntryType === 'sale' ? (
+          /* SALE QUICK ENTRY FORM */
+          <form onSubmit={handleSaveSale} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '10px', fontWeight: '700', color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Date</label>
+              <CustomDatePicker
+                value={saleForm.date}
+                onChange={(e: any) => setSaleForm({ ...saleForm, date: e.target.value })}
+                style={{ minHeight: '34px', padding: '4px 8px', fontSize: '12px' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', gridColumn: 'span 2' }}>
+              <label style={{ fontSize: '10px', fontWeight: '700', color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Item Name *</label>
+              <AutoSuggestInput
+                required
+                placeholder="e.g. Chocolate Truffle Cake..."
+                value={saleForm.item_name}
+                onChange={(val) => setSaleForm({ ...saleForm, item_name: val })}
+                options={existingSaleItemNames}
+                maxSuggestions={5}
+                style={{ height: '34px', padding: '6px 10px', fontSize: '12px', background: '#1e293b', borderRadius: '8px' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Category</label>
+              <select
+                value={saleForm.category}
+                onChange={(e) => setSaleForm({ ...saleForm, category: e.target.value })}
+                style={{ width: '100%', padding: '6px 10px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: '#fff', fontSize: '12px', height: '34px', outline: 'none' }}>
+                <option value="Cakes">Cakes</option>
+                <option value="Pastries">Pastries</option>
+                <option value="Cupcakes">Cupcakes</option>
+                <option value="Breads">Breads</option>
+                <option value="Custom Cakes">Other</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '10px', fontWeight: '700', color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Qty & Unit *</label>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <input
+                  type="number" min="1" required
+                  placeholder="Qty"
+                  value={saleForm.quantity}
+                  onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
+                  onChange={(e) => setSaleForm({ ...saleForm, quantity: e.target.value === '' ? '' : Number(e.target.value) })}
+                  style={{ flex: 1, minWidth: '50px', padding: '6px 8px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: '#fff', fontSize: '12px', height: '34px', outline: 'none' }}
+                />
+                <select
+                  value={saleForm.unit}
+                  onChange={(e) => setSaleForm({ ...saleForm, unit: e.target.value })}
+                  style={{ width: '70px', padding: '6px 4px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: '#fbbf24', fontSize: '11px', fontWeight: '700', height: '34px', outline: 'none' }}>
+                  <option value="Pcs">Pcs</option>
+                  <option value="KG">KG</option>
+                  <option value="Grams">Grams</option>
+                  <option value="Packet">Packet</option>
+                  <option value="Unit">Unit</option>
+                  <option value="Litre">Litre</option>
+                  <option value="Box">Box</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '10px', fontWeight: '700', color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Unit Price (₹) *</label>
+              <input
+                type="number" step="0.01" min="0" required
+                placeholder="Price"
+                value={saleForm.unit_price}
+                onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
+                onChange={(e) => setSaleForm({ ...saleForm, unit_price: e.target.value === '' ? '' : Number(e.target.value) })}
+                style={{ width: '100%', padding: '6px 10px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: '#fff', fontSize: '12px', height: '34px', outline: 'none' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Payment</label>
+              <select
+                value={saleForm.payment_method}
+                onChange={(e) => setSaleForm({ ...saleForm, payment_method: e.target.value as any })}
+                style={{ width: '100%', padding: '6px 10px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: '#fff', fontSize: '12px', height: '34px', outline: 'none' }}>
+                <option value="UPI">UPI / GPay</option>
+                <option value="Card">Card</option>
+                <option value="Cash">Cash</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+              </select>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSavingQuickEntry || (Number(saleForm.quantity) || 0) * (Number(saleForm.unit_price) || 0) <= 0}
+              style={{
+                padding: '8px 24px',
+                height: '36px',
+                whiteSpace: 'nowrap',
+                background: isSavingQuickEntry
+                  ? '#475569'
+                  : ((Number(saleForm.quantity) || 0) * (Number(saleForm.unit_price) || 0) > 0)
+                    ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                    : 'rgba(255,255,255,0.05)',
+                border: ((Number(saleForm.quantity) || 0) * (Number(saleForm.unit_price) || 0) > 0) ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '8px',
+                color: isSavingQuickEntry ? '#cbd5e1' : ((Number(saleForm.quantity) || 0) * (Number(saleForm.unit_price) || 0) > 0) ? '#fff' : '#64748b',
+                fontWeight: '700',
+                fontSize: '12px',
+                cursor: (isSavingQuickEntry || (Number(saleForm.quantity) || 0) * (Number(saleForm.unit_price) || 0) <= 0) ? 'not-allowed' : 'pointer',
+                boxShadow: ((Number(saleForm.quantity) || 0) * (Number(saleForm.unit_price) || 0) > 0) ? '0 4px 14px rgba(245, 158, 11, 0.35)' : 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease'
+              }}>
+              {isSavingQuickEntry ? (
+                <>⏳ Saving...</>
+              ) : (
+                <>
+                  <PlusCircle size={15} /> Add Sale (₹{formatIndianCurrency((Number(saleForm.quantity) || 0) * (Number(saleForm.unit_price) || 0), false)})
+                </>
+              )}
+            </button>
+          </form>
+        ) : (
+          /* PURCHASE QUICK ENTRY FORM */
+          <form onSubmit={handleSavePurchase} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '10px', fontWeight: '700', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Date</label>
+              <CustomDatePicker
+                value={purchaseForm.date}
+                onChange={(e: any) => setPurchaseForm({ ...purchaseForm, date: e.target.value })}
+                style={{ minHeight: '34px', padding: '4px 8px', fontSize: '12px' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '10px', fontWeight: '700', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Item / Supply *</label>
+              <AutoSuggestInput
+                required
+                placeholder="e.g. Flour 50kg..."
+                value={purchaseForm.item_name}
+                onChange={(val) => setPurchaseForm({ ...purchaseForm, item_name: val })}
+                options={existingPurchaseItemNames}
+                maxSuggestions={5}
+                style={{ height: '34px', padding: '6px 10px', fontSize: '12px', background: '#1e293b', borderRadius: '8px' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '10px', fontWeight: '700', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Supplier *</label>
+              <AutoSuggestInput
+                required
+                placeholder="e.g. GrainCo Ltd..."
+                value={purchaseForm.supplier}
+                onChange={(val) => setPurchaseForm({ ...purchaseForm, supplier: val })}
+                options={existingSuppliers}
+                maxSuggestions={5}
+                style={{ height: '34px', padding: '6px 10px', fontSize: '12px', background: '#1e293b', borderRadius: '8px' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Category</label>
+              <select
+                value={purchaseForm.category}
+                onChange={(e) => setPurchaseForm({ ...purchaseForm, category: e.target.value })}
+                style={{ width: '100%', padding: '6px 10px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: '#fff', fontSize: '12px', height: '34px', outline: 'none' }}>
+                <option value="Raw Materials">Raw Materials</option>
+                <option value="Dairy">Dairy</option>
+                <option value="Packaging">Packaging</option>
+                <option value="Equipment">Equipment</option>
+                <option value="Utilities">Utilities</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '10px', fontWeight: '700', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Qty & Unit *</label>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <input
+                  type="number" min="1" required
+                  placeholder="Qty"
+                  value={purchaseForm.quantity}
+                  onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
+                  onChange={(e) => setPurchaseForm({ ...purchaseForm, quantity: e.target.value === '' ? '' : Number(e.target.value) })}
+                  style={{ flex: 1, minWidth: '50px', padding: '6px 8px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: '#fff', fontSize: '12px', height: '34px', outline: 'none' }}
+                />
+                <select
+                  value={purchaseForm.unit}
+                  onChange={(e) => setPurchaseForm({ ...purchaseForm, unit: e.target.value })}
+                  style={{ width: '70px', padding: '6px 4px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: '#818cf8', fontSize: '11px', fontWeight: '700', height: '34px', outline: 'none' }}>
+                  <option value="Unit">Unit</option>
+                  <option value="KG">KG</option>
+                  <option value="Grams">Grams</option>
+                  <option value="Pcs">Pcs</option>
+                  <option value="Packet">Packet</option>
+                  <option value="Litre">Litre</option>
+                  <option value="Box">Box</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '10px', fontWeight: '700', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Unit Cost (₹) *</label>
+              <input
+                type="number" step="0.01" min="0" required
+                placeholder="Cost"
+                value={purchaseForm.unit_price}
+                onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
+                onChange={(e) => setPurchaseForm({ ...purchaseForm, unit_price: e.target.value === '' ? '' : Number(e.target.value) })}
+                style={{ width: '100%', padding: '6px 10px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: '#fff', fontSize: '12px', height: '34px', outline: 'none' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</label>
+              <select
+                value={purchaseForm.payment_status}
+                onChange={(e) => setPurchaseForm({ ...purchaseForm, payment_status: e.target.value as any })}
+                style={{ width: '100%', padding: '6px 10px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: '#fff', fontSize: '12px', height: '34px', outline: 'none' }}>
+                <option value="Paid">Paid</option>
+                <option value="Pending">Pending</option>
+                <option value="Partial">Partial</option>
+              </select>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSavingQuickEntry || (Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0) <= 0}
+              style={{
+                padding: '8px 24px',
+                height: '36px',
+                whiteSpace: 'nowrap',
+                background: isSavingQuickEntry
+                  ? '#475569'
+                  : ((Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0) > 0)
+                    ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)'
+                    : 'rgba(255,255,255,0.05)',
+                border: ((Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0) > 0) ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '8px',
+                color: isSavingQuickEntry ? '#cbd5e1' : ((Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0) > 0) ? '#fff' : '#64748b',
+                fontWeight: '700',
+                fontSize: '12px',
+                cursor: (isSavingQuickEntry || (Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0) <= 0) ? 'not-allowed' : 'pointer',
+                boxShadow: ((Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0) > 0) ? '0 4px 14px rgba(99, 102, 241, 0.35)' : 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                transition: 'all 0.2s ease'
+              }}>
+              {isSavingQuickEntry ? (
+                <>⏳ Saving...</>
+              ) : (
+                <>
+                  <PlusCircle size={15} /> Add Purchase (₹{formatIndianCurrency((Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0), false)})
+                </>
+              )}
+            </button>
+          </form>
+        )}
       </div>
 
       {/* Toast Notification Pop-Up */}
@@ -860,7 +1295,7 @@ export default function AdminPage() {
                           </span>
                         </td>
                         <td style={{ padding: '8px 10px', fontWeight: '800', color: tItem.original_type === 'sale' ? '#4ade80' : '#f87171' }}>
-                          ₹{item.total_amount.toFixed(2)}
+                          ₹{formatIndianCurrency(item.total_amount)}
                         </td>
                         <td style={{ padding: '8px 10px', color: '#94a3b8', fontSize: '11px' }}>
                           {deletedDateFormatted}
@@ -895,20 +1330,21 @@ export default function AdminPage() {
               <thead>
                 <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#64748b', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   <th style={{ padding: '8px 10px' }}>Type</th>
-                  <th style={{ padding: '8px 10px' }}>Date</th>
+                  <th style={{ padding: '8px 10px' }}>Txn Date</th>
                   <th style={{ padding: '8px 10px' }}>Item / Description</th>
                   <th style={{ padding: '8px 10px' }}>Category</th>
                   <th style={{ padding: '8px 10px' }}>Qty</th>
                   <th style={{ padding: '8px 10px' }}>Unit Rate</th>
                   <th style={{ padding: '8px 10px' }}>Total Amount</th>
                   <th style={{ padding: '8px 10px' }}>Details / Status</th>
+                  <th style={{ padding: '8px 10px' }}>Entry Created</th>
                   <th style={{ padding: '8px 10px', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedEntries.length === 0 ? (
                   <tr>
-                    <td colSpan={9} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
+                    <td colSpan={10} style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>
                       No ledger entries found matching your filter criteria.
                     </td>
                   </tr>
@@ -932,14 +1368,19 @@ export default function AdminPage() {
                               {sale.category}
                             </span>
                           </td>
-                          <td style={{ padding: '8px 10px', fontWeight: '600' }}>{sale.quantity}</td>
-                          <td style={{ padding: '8px 10px', color: '#cbd5e1' }}>₹{sale.unit_price.toFixed(2)}</td>
-                          <td style={{ padding: '8px 10px', fontWeight: '800', color: '#4ade80' }}>+₹{sale.total_amount.toFixed(2)}</td>
+                          <td style={{ padding: '8px 10px', fontWeight: '600' }}>
+                            {sale.quantity} <span style={{ fontSize: '11px', color: '#94a3b8' }}>{sale.unit || 'Pcs'}</span>
+                          </td>
+                          <td style={{ padding: '8px 10px', color: '#cbd5e1' }}>₹{formatIndianCurrency(sale.unit_price)}</td>
+                          <td style={{ padding: '8px 10px', fontWeight: '800', color: '#4ade80' }}>+₹{formatIndianCurrency(sale.total_amount)}</td>
                           <td style={{ padding: '8px 10px' }}>
                             <span style={{ padding: '2px 8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', fontSize: '11px', color: '#cbd5e1' }}>
                               {sale.payment_method}
                             </span>
                             {sale.notes && <span style={{ display: 'block', fontSize: '10px', color: '#64748b', marginTop: '1px' }}>{sale.notes}</span>}
+                          </td>
+                          <td style={{ padding: '8px 10px', color: '#fbbf24', whiteSpace: 'nowrap', fontSize: '11px', fontWeight: '600' }}>
+                            {formatEntryFullDateTime(sale.created_at, sale.id)}
                           </td>
                           <td style={{ padding: '8px 10px', textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
@@ -980,9 +1421,11 @@ export default function AdminPage() {
                               {purchase.category}
                             </span>
                           </td>
-                          <td style={{ padding: '8px 10px', fontWeight: '600' }}>{purchase.quantity}</td>
-                          <td style={{ padding: '8px 10px', color: '#cbd5e1' }}>₹{purchase.unit_price.toFixed(2)}</td>
-                          <td style={{ padding: '8px 10px', fontWeight: '800', color: '#f87171' }}>-₹{purchase.total_amount.toFixed(2)}</td>
+                          <td style={{ padding: '8px 10px', fontWeight: '600' }}>
+                            {purchase.quantity} <span style={{ fontSize: '11px', color: '#94a3b8' }}>{purchase.unit || 'Unit'}</span>
+                          </td>
+                          <td style={{ padding: '8px 10px', color: '#cbd5e1' }}>₹{formatIndianCurrency(purchase.unit_price)}</td>
+                          <td style={{ padding: '8px 10px', fontWeight: '800', color: '#f87171' }}>-₹{formatIndianCurrency(purchase.total_amount)}</td>
                           <td style={{ padding: '8px 10px' }}>
                             <span style={{
                               padding: '2px 8px',
@@ -993,6 +1436,9 @@ export default function AdminPage() {
                             }}>
                               {purchase.payment_status}
                             </span>
+                          </td>
+                          <td style={{ padding: '8px 10px', color: '#818cf8', whiteSpace: 'nowrap', fontSize: '11px', fontWeight: '600' }}>
+                            {formatEntryFullDateTime(purchase.created_at, purchase.id)}
                           </td>
                           <td style={{ padding: '8px 10px', textAlign: 'right' }}>
                             <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
@@ -1127,18 +1573,32 @@ export default function AdminPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#94a3b8', marginBottom: '6px' }}>Quantity</label>
-                  <input
-                    type="number" min="1" required
-                    placeholder="Enter Qty..."
-                    value={saleForm.quantity}
-                    onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setSaleForm({ ...saleForm, quantity: val === '' ? '' : Number(val) });
-                    }}
-                    style={{ width: '100%', padding: '10px', background: '#1f2937', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#fff' }}
-                  />
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#94a3b8', marginBottom: '6px' }}>Quantity & Unit</label>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <input
+                      type="number" min="1" required
+                      placeholder="Qty..."
+                      value={saleForm.quantity}
+                      onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setSaleForm({ ...saleForm, quantity: val === '' ? '' : Number(val) });
+                      }}
+                      style={{ flex: 1, padding: '10px', background: '#1f2937', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#fff' }}
+                    />
+                    <select
+                      value={saleForm.unit}
+                      onChange={(e) => setSaleForm({ ...saleForm, unit: e.target.value })}
+                      style={{ width: '90px', padding: '10px', background: '#1f2937', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#fbbf24', fontWeight: '700' }}>
+                      <option value="Pcs">Pcs</option>
+                      <option value="KG">KG</option>
+                      <option value="Grams">Grams</option>
+                      <option value="Packet">Packet</option>
+                      <option value="Unit">Unit</option>
+                      <option value="Litre">Litre</option>
+                      <option value="Box">Box</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div>
@@ -1159,7 +1619,7 @@ export default function AdminPage() {
 
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: 'rgba(245,158,11,0.1)', borderRadius: '10px', color: '#fbbf24', fontWeight: '700' }}>
                 <span>Calculated Total:</span>
-                <span>₹{((Number(saleForm.quantity) || 0) * (Number(saleForm.unit_price) || 0)).toFixed(2)}</span>
+                <span>₹{formatIndianCurrency((Number(saleForm.quantity) || 0) * (Number(saleForm.unit_price) || 0))}</span>
               </div>
 
               <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
@@ -1268,18 +1728,32 @@ export default function AdminPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#94a3b8', marginBottom: '6px' }}>Quantity</label>
-                  <input
-                    type="number" min="1" required
-                    placeholder="Enter Qty..."
-                    value={purchaseForm.quantity}
-                    onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setPurchaseForm({ ...purchaseForm, quantity: val === '' ? '' : Number(val) });
-                    }}
-                    style={{ width: '100%', padding: '10px', background: '#1f2937', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#fff' }}
-                  />
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#94a3b8', marginBottom: '6px' }}>Quantity & Unit</label>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <input
+                      type="number" min="1" required
+                      placeholder="Qty..."
+                      value={purchaseForm.quantity}
+                      onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setPurchaseForm({ ...purchaseForm, quantity: val === '' ? '' : Number(val) });
+                      }}
+                      style={{ flex: 1, padding: '10px', background: '#1f2937', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#fff' }}
+                    />
+                    <select
+                      value={purchaseForm.unit}
+                      onChange={(e) => setPurchaseForm({ ...purchaseForm, unit: e.target.value })}
+                      style={{ width: '90px', padding: '10px', background: '#1f2937', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#818cf8', fontWeight: '700' }}>
+                      <option value="Unit">Unit</option>
+                      <option value="KG">KG</option>
+                      <option value="Grams">Grams</option>
+                      <option value="Pcs">Pcs</option>
+                      <option value="Packet">Packet</option>
+                      <option value="Litre">Litre</option>
+                      <option value="Box">Box</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div>
@@ -1300,7 +1774,7 @@ export default function AdminPage() {
 
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: 'rgba(99,102,241,0.1)', borderRadius: '10px', color: '#818cf8', fontWeight: '700' }}>
                 <span>Total Purchase Cost:</span>
-                <span>₹{((Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0)).toFixed(2)}</span>
+                <span>₹{formatIndianCurrency((Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0))}</span>
               </div>
 
               <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>

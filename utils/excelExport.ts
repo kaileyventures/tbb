@@ -29,8 +29,9 @@ const formatRowForExcel = (row: any, type?: 'sale' | 'purchase') => {
       'Item Name': row.item_name || '',
       'Category': row.category || '',
       'Quantity': row.quantity || 0,
-      'Unit Price (₹)': row.unit_price ? `₹${Number(row.unit_price).toFixed(2)}` : '₹0.00',
-      'Total Amount (₹)': row.total_amount ? `₹${Number(row.total_amount).toFixed(2)}` : '₹0.00',
+      'Unit': row.unit || 'Pcs',
+      'Unit Price (₹)': row.unit_price ? `₹${Number(row.unit_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00',
+      'Total Amount (₹)': row.total_amount ? `₹${Number(row.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00',
       'Payment Method': row.payment_method || '-',
       'Notes': row.notes || '-'
     };
@@ -42,8 +43,9 @@ const formatRowForExcel = (row: any, type?: 'sale' | 'purchase') => {
       'Supplier / Vendor': row.supplier || '-',
       'Category': row.category || '',
       'Quantity': row.quantity || 0,
-      'Unit Cost (₹)': row.unit_price ? `₹${Number(row.unit_price).toFixed(2)}` : '₹0.00',
-      'Total Purchase Cost (₹)': row.total_amount ? `₹${Number(row.total_amount).toFixed(2)}` : '₹0.00',
+      'Unit': row.unit || 'Unit',
+      'Unit Cost (₹)': row.unit_price ? `₹${Number(row.unit_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00',
+      'Total Purchase Cost (₹)': row.total_amount ? `₹${Number(row.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00',
       'Payment Status': row.payment_status || '-',
       'Notes': row.notes || '-'
     };

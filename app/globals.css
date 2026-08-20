@@ -12,7 +12,7 @@
   --color-charcoal: #2D2A26;
   
   --font-serif: var(--font-playfair);
-  --font-sans: var(--font-jakarta);
+  --font-sans: var(--font-manrope), var(--font-jakarta), sans-serif;
 }
 
 :root {
@@ -34,15 +34,15 @@
 }
 
 /* Base resets & typography */
-body {
+body, input, select, textarea, button, table {
   background-color: #FAF6F0; /* cream-bg */
   color: #2D2A26; /* charcoal */
   overflow-x: hidden;
-  font-family: var(--font-jakarta), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-manrope), 'Manrope', system-ui, -apple-system, sans-serif !important;
 }
 
 h1, h2, h3, h4, .font-serif-heading {
-  font-family: var(--font-playfair), Georgia, serif;
+  font-family: var(--font-manrope), 'Manrope', var(--font-playfair), Georgia, serif;
 }
 
 /* Custom premium scrollbar */
@@ -165,11 +165,12 @@ h1, h2, h3, h4, .font-serif-heading {
 /* Hide Chrome, Safari, Edge, Opera number input spinners */
 input::-webkit-outer-spin-button,
 input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
+  -webkit-appearance: none !important;
+  margin: 0 !important;
 }
 
 /* Hide Firefox number input spinners */
 input[type=number] {
-  -moz-appearance: textfield;
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
 }

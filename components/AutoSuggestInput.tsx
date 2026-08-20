@@ -9,6 +9,7 @@ interface AutoSuggestInputProps {
   placeholder?: string;
   required?: boolean;
   maxSuggestions?: number;
+  style?: React.CSSProperties;
 }
 
 export default function AutoSuggestInput({
@@ -17,7 +18,8 @@ export default function AutoSuggestInput({
   options,
   placeholder,
   required = false,
-  maxSuggestions = 5
+  maxSuggestions = 5,
+  style
 }: AutoSuggestInputProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -57,7 +59,8 @@ export default function AutoSuggestInput({
           borderRadius: '10px',
           color: '#fff',
           fontSize: '14px',
-          outline: 'none'
+          outline: 'none',
+          ...style
         }}
       />
 
