@@ -395,7 +395,11 @@ export default function AdminPage() {
         const updatedEntry: SaleEntry = { ...editingSale, ...payloadForm, total_amount };
         if (supabase) {
           const { unit, ...dbPayload } = payloadForm;
-          await supabase.from('sales').update(dbPayload).eq('id', editingSale.id);
+          const { error: updateErr } = await supabase.from('sales').update(dbPayload).eq('id', editingSale.id);
+          if (updateErr) {
+            console.error('Supabase Sale Update Error:', updateErr);
+            triggerToast(`⚠️ Warning: Updated locally but Supabase error: ${updateErr.message}`);
+          }
         }
         setSales(sales.map(s => s.id === editingSale.id ? updatedEntry : s));
         triggerToast(`✏️ Sale entry "${saleForm.item_name}" updated successfully.`);
@@ -406,10 +410,11 @@ export default function AdminPage() {
           const { id, unit, ...payload } = newEntry;
           const { data, error } = await supabase.from('sales').insert([payload]).select();
           if (error) {
-            alert('Supabase Error: ' + error.message);
-            return;
+            console.error('Supabase Sale Insert Error:', error);
+            triggerToast(`⚠️ Saved locally, but Supabase error: ${error.message}`);
+          } else if (data && data.length > 0) {
+            newEntry = { ...newEntry, ...data[0] };
           }
-          if (data && data.length > 0) newEntry = { ...newEntry, ...data[0] };
         }
         setSales([newEntry, ...sales]);
         triggerToast(`✅ Sale entry "${saleForm.item_name}" added successfully.`);
@@ -424,6 +429,9 @@ export default function AdminPage() {
         unit_price: '',
         notes: ''
       }));
+    } catch (err: any) {
+      console.error('Error saving sale entry:', err);
+      triggerToast(`⚠️ Save Error: ${err?.message || 'Failed to save entry.'}`);
     } finally {
       setIsSavingQuickEntry(false);
     }
@@ -450,7 +458,11 @@ export default function AdminPage() {
         const updatedEntry: PurchaseEntry = { ...editingPurchase, ...payloadForm, total_amount };
         if (supabase) {
           const { unit, ...dbPayload } = payloadForm;
-          await supabase.from('purchases').update(dbPayload).eq('id', editingPurchase.id);
+          const { error: updateErr } = await supabase.from('purchases').update(dbPayload).eq('id', editingPurchase.id);
+          if (updateErr) {
+            console.error('Supabase Purchase Update Error:', updateErr);
+            triggerToast(`⚠️ Warning: Updated locally but Supabase error: ${updateErr.message}`);
+          }
         }
         setPurchases(purchases.map(p => p.id === editingPurchase.id ? updatedEntry : p));
         triggerToast(`✏️ Purchase entry "${purchaseForm.item_name}" updated successfully.`);
@@ -461,10 +473,11 @@ export default function AdminPage() {
           const { id, unit, ...payload } = newEntry;
           const { data, error } = await supabase.from('purchases').insert([payload]).select();
           if (error) {
-            alert('Supabase Error: ' + error.message);
-            return;
+            console.error('Supabase Purchase Insert Error:', error);
+            triggerToast(`⚠️ Saved locally, but Supabase error: ${error.message}`);
+          } else if (data && data.length > 0) {
+            newEntry = { ...newEntry, ...data[0] };
           }
-          if (data && data.length > 0) newEntry = { ...newEntry, ...data[0] };
         }
         setPurchases([newEntry, ...purchases]);
         triggerToast(`✅ Purchase entry "${purchaseForm.item_name}" added successfully.`);
@@ -480,6 +493,9 @@ export default function AdminPage() {
         unit_price: '',
         notes: ''
       }));
+    } catch (err: any) {
+      console.error('Error saving purchase entry:', err);
+      triggerToast(`⚠️ Save Error: ${err?.message || 'Failed to save entry.'}`);
     } finally {
       setIsSavingQuickEntry(false);
     }
