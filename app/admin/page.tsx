@@ -107,7 +107,8 @@ export default function AdminPage() {
   const handleAddSale = async (e: React.FormEvent) => {
     e.preventDefault();
     const total_amount = saleForm.quantity * saleForm.unit_price;
-    const newEntry: SaleEntry = {
+
+    let savedEntry: SaleEntry = {
       id: Date.now().toString(),
       ...saleForm,
       total_amount
@@ -115,14 +116,22 @@ export default function AdminPage() {
 
     if (supabase) {
       try {
-        const { error } = await supabase.from('sales').insert([newEntry]);
-        if (error) alert('Supabase error: ' + error.message);
+        // Exclude local string ID so Supabase uses default gen_random_uuid()
+        const { id, ...salePayload } = savedEntry;
+        const { data, error } = await supabase.from('sales').insert([salePayload]).select();
+        if (error) {
+          alert('Supabase error: ' + error.message);
+          return;
+        }
+        if (data && data.length > 0) {
+          savedEntry = data[0];
+        }
       } catch (err) {
         console.error(err);
       }
     }
 
-    setSales([newEntry, ...sales]);
+    setSales([savedEntry, ...sales]);
     setShowSaleModal(false);
     setSaleForm({
       date: new Date().toISOString().slice(0, 10),
@@ -139,7 +148,8 @@ export default function AdminPage() {
   const handleAddPurchase = async (e: React.FormEvent) => {
     e.preventDefault();
     const total_amount = purchaseForm.quantity * purchaseForm.unit_price;
-    const newEntry: PurchaseEntry = {
+
+    let savedEntry: PurchaseEntry = {
       id: Date.now().toString(),
       ...purchaseForm,
       total_amount
@@ -147,14 +157,22 @@ export default function AdminPage() {
 
     if (supabase) {
       try {
-        const { error } = await supabase.from('purchases').insert([newEntry]);
-        if (error) alert('Supabase error: ' + error.message);
+        // Exclude local string ID so Supabase uses default gen_random_uuid()
+        const { id, ...purchasePayload } = savedEntry;
+        const { data, error } = await supabase.from('purchases').insert([purchasePayload]).select();
+        if (error) {
+          alert('Supabase error: ' + error.message);
+          return;
+        }
+        if (data && data.length > 0) {
+          savedEntry = data[0];
+        }
       } catch (err) {
         console.error(err);
       }
     }
 
-    setPurchases([newEntry, ...purchases]);
+    setPurchases([savedEntry, ...purchases]);
     setShowPurchaseModal(false);
     setPurchaseForm({
       date: new Date().toISOString().slice(0, 10),
