@@ -387,12 +387,13 @@ export default function AdminPage() {
       const payloadForm = {
         ...saleForm,
         quantity: qty,
-        unit_price: price
+        unit_price: price,
+        total_amount
       };
 
       if (editingSale) {
         // UPDATE
-        const updatedEntry: SaleEntry = { ...editingSale, ...payloadForm, total_amount };
+        const updatedEntry: SaleEntry = { ...editingSale, ...payloadForm };
         if (supabase) {
           const { unit, ...dbPayload } = payloadForm;
           const { error: updateErr } = await supabase.from('sales').update(dbPayload).eq('id', editingSale.id);
@@ -401,11 +402,11 @@ export default function AdminPage() {
             triggerToast(`⚠️ Warning: Updated locally but Supabase error: ${updateErr.message}`);
           }
         }
-        setSales(sales.map(s => s.id === editingSale.id ? updatedEntry : s));
+        setSales(prev => prev.map(s => s.id === editingSale.id ? updatedEntry : s));
         triggerToast(`✏️ Sale entry "${saleForm.item_name}" updated successfully.`);
       } else {
         // CREATE
-        let newEntry: SaleEntry = { id: Date.now().toString(), ...payloadForm, total_amount };
+        let newEntry: SaleEntry = { id: Date.now().toString(), ...payloadForm };
         if (supabase) {
           const { id, unit, ...payload } = newEntry;
           const { data, error } = await supabase.from('sales').insert([payload]).select();
@@ -416,7 +417,7 @@ export default function AdminPage() {
             newEntry = { ...newEntry, ...data[0] };
           }
         }
-        setSales([newEntry, ...sales]);
+        setSales(prev => [newEntry, ...prev]);
         triggerToast(`✅ Sale entry "${saleForm.item_name}" added successfully.`);
       }
 
@@ -450,12 +451,13 @@ export default function AdminPage() {
       const payloadForm = {
         ...purchaseForm,
         quantity: qty,
-        unit_price: price
+        unit_price: price,
+        total_amount
       };
 
       if (editingPurchase) {
         // UPDATE
-        const updatedEntry: PurchaseEntry = { ...editingPurchase, ...payloadForm, total_amount };
+        const updatedEntry: PurchaseEntry = { ...editingPurchase, ...payloadForm };
         if (supabase) {
           const { unit, ...dbPayload } = payloadForm;
           const { error: updateErr } = await supabase.from('purchases').update(dbPayload).eq('id', editingPurchase.id);
@@ -464,11 +466,11 @@ export default function AdminPage() {
             triggerToast(`⚠️ Warning: Updated locally but Supabase error: ${updateErr.message}`);
           }
         }
-        setPurchases(purchases.map(p => p.id === editingPurchase.id ? updatedEntry : p));
+        setPurchases(prev => prev.map(p => p.id === editingPurchase.id ? updatedEntry : p));
         triggerToast(`✏️ Purchase entry "${purchaseForm.item_name}" updated successfully.`);
       } else {
         // CREATE
-        let newEntry: PurchaseEntry = { id: Date.now().toString(), ...payloadForm, total_amount };
+        let newEntry: PurchaseEntry = { id: Date.now().toString(), ...payloadForm };
         if (supabase) {
           const { id, unit, ...payload } = newEntry;
           const { data, error } = await supabase.from('purchases').insert([payload]).select();
@@ -479,7 +481,7 @@ export default function AdminPage() {
             newEntry = { ...newEntry, ...data[0] };
           }
         }
-        setPurchases([newEntry, ...purchases]);
+        setPurchases(prev => [newEntry, ...prev]);
         triggerToast(`✅ Purchase entry "${purchaseForm.item_name}" added successfully.`);
       }
 
