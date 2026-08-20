@@ -33,6 +33,8 @@ export const metadata: Metadata = {
   }
 }
 
+import LayoutShell from '@/components/LayoutShell'
+
 export default function RootLayout({
   children,
 }: {
@@ -61,11 +63,7 @@ export default function RootLayout({
         {/* Main App Layout */}
         <SiteProvider>
           <div className="relative z-10 flex flex-col min-h-screen">
-            <Navbar />
-            <main className="flex-grow">
-              {children}
-            </main>
-            <Footer />
+            <LayoutShell>{children}</LayoutShell>
           </div>
         </SiteProvider>
       </body>

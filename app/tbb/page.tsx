@@ -15,7 +15,9 @@ import {
   ArrowUpRight, 
   ArrowDownRight,
   Database,
-  Lock
+  Lock,
+  Edit2,
+  AlertTriangle
 } from 'lucide-react';
 
 const INITIAL_SALES: SaleEntry[] = [
@@ -50,9 +52,14 @@ export default function AdminPage() {
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterEndDate, setFilterEndDate] = useState('');
 
-  // Modal / Form States
+  // Modal States
   const [showSaleModal, setShowSaleModal] = useState(false);
   const [showPurchaseModal, setShowPurchaseModal] = useState(false);
+  const [editingSale, setEditingSale] = useState<SaleEntry | null>(null);
+  const [editingPurchase, setEditingPurchase] = useState<PurchaseEntry | null>(null);
+
+  // Delete Confirmation Pop-Screen State
+  const [deleteTarget, setDeleteTarget] = useState<{ type: 'sale' | 'purchase'; item: SaleEntry | PurchaseEntry } | null>(null);
 
   // Form Fields - Sale
   const [saleForm, setSaleForm] = useState({
@@ -123,99 +130,139 @@ export default function AdminPage() {
     }
   };
 
-  const handleAddSale = async (e: React.FormEvent) => {
+  // Open Add/Edit Sale Modal
+  const openSaleModal = (sale?: SaleEntry) => {
+    if (sale) {
+      setEditingSale(sale);
+      setSaleForm({
+        date: sale.date,
+        item_name: sale.item_name,
+        category: sale.category,
+        quantity: sale.quantity,
+        unit_price: sale.unit_price,
+        payment_method: sale.payment_method as any,
+        notes: sale.notes || ''
+      });
+    } else {
+      setEditingSale(null);
+      setSaleForm({
+        date: new Date().toISOString().slice(0, 10),
+        item_name: '',
+        category: 'Cakes',
+        quantity: 1,
+        unit_price: 0,
+        payment_method: 'Card',
+        notes: ''
+      });
+    }
+    setShowSaleModal(true);
+  };
+
+  // Open Add/Edit Purchase Modal
+  const openPurchaseModal = (purchase?: PurchaseEntry) => {
+    if (purchase) {
+      setEditingPurchase(purchase);
+      setPurchaseForm({
+        date: purchase.date,
+        item_name: purchase.item_name,
+        supplier: purchase.supplier,
+        category: purchase.category,
+        quantity: purchase.quantity,
+        unit_price: purchase.unit_price,
+        payment_status: purchase.payment_status as any,
+        notes: purchase.notes || ''
+      });
+    } else {
+      setEditingPurchase(null);
+      setPurchaseForm({
+        date: new Date().toISOString().slice(0, 10),
+        item_name: '',
+        supplier: '',
+        category: 'Raw Materials',
+        quantity: 1,
+        unit_price: 0,
+        payment_status: 'Paid',
+        notes: ''
+      });
+    }
+    setShowPurchaseModal(true);
+  };
+
+  // Save (Create or Update) Sale Entry
+  const handleSaveSale = async (e: React.FormEvent) => {
     e.preventDefault();
     const total_amount = saleForm.quantity * saleForm.unit_price;
 
-    let savedEntry: SaleEntry = {
-      id: Date.now().toString(),
-      ...saleForm,
-      total_amount
-    };
-
-    if (supabase) {
-      try {
-        const { id, ...salePayload } = savedEntry;
-        const { data, error } = await supabase.from('sales').insert([salePayload]).select();
+    if (editingSale) {
+      // UPDATE
+      const updatedEntry: SaleEntry = { ...editingSale, ...saleForm, total_amount };
+      if (supabase) {
+        await supabase.from('sales').update(saleForm).eq('id', editingSale.id);
+      }
+      setSales(sales.map(s => s.id === editingSale.id ? updatedEntry : s));
+    } else {
+      // CREATE
+      let newEntry: SaleEntry = { id: Date.now().toString(), ...saleForm, total_amount };
+      if (supabase) {
+        const { id, ...payload } = newEntry;
+        const { data, error } = await supabase.from('sales').insert([payload]).select();
         if (error) {
-          alert('Supabase error: ' + error.message);
+          alert('Supabase Error: ' + error.message);
           return;
         }
-        if (data && data.length > 0) {
-          savedEntry = data[0];
-        }
-      } catch (err) {
-        console.error(err);
+        if (data && data.length > 0) newEntry = data[0];
       }
+      setSales([newEntry, ...sales]);
     }
 
-    setSales([savedEntry, ...sales]);
     setShowSaleModal(false);
-    setSaleForm({
-      date: new Date().toISOString().slice(0, 10),
-      item_name: '',
-      category: 'Cakes',
-      quantity: 1,
-      unit_price: 0,
-      payment_method: 'Card',
-      notes: ''
-    });
+    setEditingSale(null);
   };
 
-  const handleAddPurchase = async (e: React.FormEvent) => {
+  // Save (Create or Update) Purchase Entry
+  const handleSavePurchase = async (e: React.FormEvent) => {
     e.preventDefault();
     const total_amount = purchaseForm.quantity * purchaseForm.unit_price;
 
-    let savedEntry: PurchaseEntry = {
-      id: Date.now().toString(),
-      ...purchaseForm,
-      total_amount
-    };
-
-    if (supabase) {
-      try {
-        const { id, ...purchasePayload } = savedEntry;
-        const { data, error } = await supabase.from('purchases').insert([purchasePayload]).select();
+    if (editingPurchase) {
+      // UPDATE
+      const updatedEntry: PurchaseEntry = { ...editingPurchase, ...purchaseForm, total_amount };
+      if (supabase) {
+        await supabase.from('purchases').update(purchaseForm).eq('id', editingPurchase.id);
+      }
+      setPurchases(purchases.map(p => p.id === editingPurchase.id ? updatedEntry : p));
+    } else {
+      // CREATE
+      let newEntry: PurchaseEntry = { id: Date.now().toString(), ...purchaseForm, total_amount };
+      if (supabase) {
+        const { id, ...payload } = newEntry;
+        const { data, error } = await supabase.from('purchases').insert([payload]).select();
         if (error) {
-          alert('Supabase error: ' + error.message);
+          alert('Supabase Error: ' + error.message);
           return;
         }
-        if (data && data.length > 0) {
-          savedEntry = data[0];
-        }
-      } catch (err) {
-        console.error(err);
+        if (data && data.length > 0) newEntry = data[0];
       }
+      setPurchases([newEntry, ...purchases]);
     }
 
-    setPurchases([savedEntry, ...purchases]);
     setShowPurchaseModal(false);
-    setPurchaseForm({
-      date: new Date().toISOString().slice(0, 10),
-      item_name: '',
-      supplier: '',
-      category: 'Raw Materials',
-      quantity: 1,
-      unit_price: 0,
-      payment_status: 'Paid',
-      notes: ''
-    });
+    setEditingPurchase(null);
   };
 
-  const handleDeleteSale = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this sale entry?')) return;
-    if (supabase) {
-      await supabase.from('sales').delete().eq('id', id);
-    }
-    setSales(sales.filter(s => s.id !== id));
-  };
+  // Confirm and Execute Delete via Pop-Screen Modal
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
 
-  const handleDeletePurchase = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this purchase entry?')) return;
-    if (supabase) {
-      await supabase.from('purchases').delete().eq('id', id);
+    if (deleteTarget.type === 'sale') {
+      if (supabase) await supabase.from('sales').delete().eq('id', deleteTarget.item.id);
+      setSales(sales.filter(s => s.id !== deleteTarget.item.id));
+    } else {
+      if (supabase) await supabase.from('purchases').delete().eq('id', deleteTarget.item.id);
+      setPurchases(purchases.filter(p => p.id !== deleteTarget.item.id));
     }
-    setPurchases(purchases.filter(p => p.id !== id));
+
+    setDeleteTarget(null);
   };
 
   const filteredSales = sales.filter((s: SaleEntry) => {
@@ -332,7 +379,7 @@ export default function AdminPage() {
           </button>
           {activeTab === 'sales' ? (
             <button 
-              onClick={() => setShowSaleModal(true)}
+              onClick={() => openSaleModal()}
               style={{ 
                 display: 'flex', 
                 alignItems: 'center', 
@@ -351,7 +398,7 @@ export default function AdminPage() {
             </button>
           ) : (
             <button 
-              onClick={() => setShowPurchaseModal(true)}
+              onClick={() => openPurchaseModal()}
               style={{ 
                 display: 'flex', 
                 alignItems: 'center', 
@@ -375,7 +422,6 @@ export default function AdminPage() {
       {/* Quick Summary Metric Cards */}
       <div style={{ maxWidth: '1400px', margin: '0 auto 32px auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
         
-        {/* Total Sales Card */}
         <div style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '20px', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Revenue (Sales)</span>
@@ -391,7 +437,6 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Total Purchases Card */}
         <div style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '20px', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Expenses (Purchases)</span>
@@ -407,7 +452,6 @@ export default function AdminPage() {
           </div>
         </div>
 
-        {/* Net Profit Card */}
         <div style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '20px', boxShadow: '0 8px 24px rgba(0,0,0,0.3)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ color: '#94a3b8', fontSize: '13px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Net Margin / Profit</span>
@@ -428,7 +472,6 @@ export default function AdminPage() {
       {/* Main Content Area */}
       <div style={{ maxWidth: '1400px', margin: '0 auto', background: '#111827', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '20px', padding: '24px', boxShadow: '0 12px 32px rgba(0,0,0,0.4)' }}>
         
-        {/* Navigation Tabs */}
         <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: '24px', gap: '8px' }}>
           <button 
             onClick={() => setActiveTab('sales')}
@@ -477,11 +520,8 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* Filters and Date Pickers */}
         {activeTab !== 'supabase' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px', background: 'rgba(255,255,255,0.02)', padding: '16px', borderRadius: '14px', border: '1px solid rgba(255,255,255,0.05)' }}>
-            
-            {/* Search Input */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label style={{ fontSize: '12px', fontWeight: '600', color: '#94a3b8' }}>Search Item / Category</label>
               <div style={{ position: 'relative' }}>
@@ -496,7 +536,6 @@ export default function AdminPage() {
               </div>
             </div>
 
-            {/* Start Date Filter using CustomDatePicker */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label style={{ fontSize: '12px', fontWeight: '600', color: '#94a3b8' }}>From Date</label>
               <CustomDatePicker 
@@ -506,7 +545,6 @@ export default function AdminPage() {
               />
             </div>
 
-            {/* End Date Filter using CustomDatePicker */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <label style={{ fontSize: '12px', fontWeight: '600', color: '#94a3b8' }}>To Date</label>
               <CustomDatePicker 
@@ -516,7 +554,6 @@ export default function AdminPage() {
               />
             </div>
 
-            {/* Reset Filters */}
             <div style={{ display: 'flex', alignItems: 'flex-end' }}>
               <button 
                 onClick={() => { setSearchTerm(''); setFilterStartDate(''); setFilterEndDate(''); }}
@@ -569,11 +606,20 @@ export default function AdminPage() {
                       </td>
                       <td style={{ padding: '14px 16px', color: '#94a3b8', fontSize: '13px' }}>{sale.notes || '-'}</td>
                       <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                        <button 
-                          onClick={() => handleDeleteSale(sale.id)}
-                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '6px' }}>
-                          <Trash2 size={16} />
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                          <button 
+                            onClick={() => openSaleModal(sale)}
+                            title="Edit Entry"
+                            style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', color: '#fbbf24', cursor: 'pointer', padding: '6px 10px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: '600' }}>
+                            <Edit2 size={14} /> Edit
+                          </button>
+                          <button 
+                            onClick={() => setDeleteTarget({ type: 'sale', item: sale })}
+                            title="Delete Entry"
+                            style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', cursor: 'pointer', padding: '6px 10px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: '600' }}>
+                            <Trash2 size={14} /> Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -631,11 +677,20 @@ export default function AdminPage() {
                         </span>
                       </td>
                       <td style={{ padding: '14px 16px', textAlign: 'right' }}>
-                        <button 
-                          onClick={() => handleDeletePurchase(purchase.id)}
-                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '6px' }}>
-                          <Trash2 size={16} />
-                        </button>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                          <button 
+                            onClick={() => openPurchaseModal(purchase)}
+                            title="Edit Entry"
+                            style={{ background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.2)', color: '#818cf8', cursor: 'pointer', padding: '6px 10px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: '600' }}>
+                            <Edit2 size={14} /> Edit
+                          </button>
+                          <button 
+                            onClick={() => setDeleteTarget({ type: 'purchase', item: purchase })}
+                            title="Delete Entry"
+                            style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', cursor: 'pointer', padding: '6px 10px', borderRadius: '8px', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: '600' }}>
+                            <Trash2 size={14} /> Delete
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -685,28 +740,20 @@ CREATE TABLE purchases (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );`}
             </pre>
-
-            <div style={{ marginTop: '24px', padding: '16px', background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: '12px' }}>
-              <h4 style={{ margin: 0, color: '#fbbf24', fontSize: '15px' }}>Next Environment Variables Required:</h4>
-              <p style={{ color: '#cbd5e1', fontSize: '13px', marginTop: '6px' }}>Add these variables to your <code>.env.local</code> file in your project root:</p>
-              <code style={{ display: 'block', background: '#1e293b', padding: '10px', borderRadius: '8px', color: '#f1f5f9', marginTop: '8px', fontSize: '13px' }}>
-                NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co<br />
-                NEXT_PUBLIC_SUPABASE_ANON_KEY=your-anon-key-here<br />
-                NEXT_PUBLIC_ADMIN_PASSWORD=your-secret-password
-              </code>
-            </div>
           </div>
         )}
 
       </div>
 
-      {/* Modal - New Sale Entry */}
+      {/* Pop-Screen Modal - Sale Entry (Add / Edit) */}
       {showSaleModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '20px' }}>
           <div style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '20px', padding: '28px', width: '100%', maxWidth: '500px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)' }}>
-            <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#fbbf24', marginBottom: '20px' }}>Record New Sale Entry</h2>
+            <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#fbbf24', marginBottom: '20px' }}>
+              {editingSale ? 'Edit Sale Entry' : 'Record New Sale Entry'}
+            </h2>
             
-            <form onSubmit={handleAddSale} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <form onSubmit={handleSaveSale} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#94a3b8', marginBottom: '6px' }}>Transaction Date</label>
@@ -786,14 +833,14 @@ CREATE TABLE purchases (
               <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
                 <button 
                   type="button" 
-                  onClick={() => setShowSaleModal(false)}
+                  onClick={() => { setShowSaleModal(false); setEditingSale(null); }}
                   style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#94a3b8', fontWeight: '600', cursor: 'pointer' }}>
                   Cancel
                 </button>
                 <button 
                   type="submit"
                   style={{ flex: 1, padding: '12px', background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', border: 'none', borderRadius: '10px', color: '#fff', fontWeight: '700', cursor: 'pointer' }}>
-                  Save Sale Entry
+                  {editingSale ? 'Update Sale Entry' : 'Save Sale Entry'}
                 </button>
               </div>
 
@@ -802,13 +849,15 @@ CREATE TABLE purchases (
         </div>
       )}
 
-      {/* Modal - New Purchase Entry */}
+      {/* Pop-Screen Modal - Purchase Entry (Add / Edit) */}
       {showPurchaseModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '20px' }}>
           <div style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '20px', padding: '28px', width: '100%', maxWidth: '500px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7)' }}>
-            <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#818cf8', marginBottom: '20px' }}>Record Purchase Entry</h2>
+            <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#818cf8', marginBottom: '20px' }}>
+              {editingPurchase ? 'Edit Purchase Entry' : 'Record Purchase Entry'}
+            </h2>
             
-            <form onSubmit={handleAddPurchase} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <form onSubmit={handleSavePurchase} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#94a3b8', marginBottom: '6px' }}>Purchase Date</label>
@@ -900,18 +949,50 @@ CREATE TABLE purchases (
               <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
                 <button 
                   type="button" 
-                  onClick={() => setShowPurchaseModal(false)}
+                  onClick={() => { setShowPurchaseModal(false); setEditingPurchase(null); }}
                   style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#94a3b8', fontWeight: '600', cursor: 'pointer' }}>
                   Cancel
                 </button>
                 <button 
                   type="submit"
                   style={{ flex: 1, padding: '12px', background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', border: 'none', borderRadius: '10px', color: '#fff', fontWeight: '700', cursor: 'pointer' }}>
-                  Save Purchase Entry
+                  {editingPurchase ? 'Update Purchase Entry' : 'Save Purchase Entry'}
                 </button>
               </div>
 
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Pop-Screen Modal - Delete Confirmation */}
+      {deleteTarget && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(8px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999, padding: '20px' }}>
+          <div style={{ background: '#111827', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '24px', padding: '32px', width: '100%', maxWidth: '420px', textAlign: 'center', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.8)' }}>
+            <div style={{ width: '56px', height: '56px', background: 'rgba(239, 68, 68, 0.15)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444', margin: '0 auto 20px auto' }}>
+              <AlertTriangle size={28} />
+            </div>
+            
+            <h3 style={{ fontSize: '20px', fontWeight: '800', color: '#f87171', margin: '0 0 8px 0' }}>
+              Delete {deleteTarget.type === 'sale' ? 'Sale' : 'Purchase'} Entry?
+            </h3>
+            
+            <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px', lineHeight: '1.5' }}>
+              Are you sure you want to permanently delete <b>"{deleteTarget.item.item_name}"</b>? This action cannot be undone.
+            </p>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button 
+                onClick={() => setDeleteTarget(null)}
+                style={{ flex: 1, padding: '12px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px', color: '#cbd5e1', fontWeight: '600', cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDelete}
+                style={{ flex: 1, padding: '12px', background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', border: 'none', borderRadius: '12px', color: '#fff', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 14px rgba(239, 68, 68, 0.3)' }}>
+                Delete Permanently
+              </button>
+            </div>
           </div>
         </div>
       )}
