@@ -379,7 +379,8 @@ export default function AdminPage() {
         // UPDATE
         const updatedEntry: SaleEntry = { ...editingSale, ...payloadForm, total_amount };
         if (supabase) {
-          await supabase.from('sales').update(payloadForm).eq('id', editingSale.id);
+          const { unit, ...dbPayload } = payloadForm;
+          await supabase.from('sales').update(dbPayload).eq('id', editingSale.id);
         }
         setSales(sales.map(s => s.id === editingSale.id ? updatedEntry : s));
         triggerToast(`✏️ Sale entry "${saleForm.item_name}" updated successfully.`);
@@ -387,13 +388,13 @@ export default function AdminPage() {
         // CREATE
         let newEntry: SaleEntry = { id: Date.now().toString(), ...payloadForm, total_amount };
         if (supabase) {
-          const { id, ...payload } = newEntry;
+          const { id, unit, ...payload } = newEntry;
           const { data, error } = await supabase.from('sales').insert([payload]).select();
           if (error) {
             alert('Supabase Error: ' + error.message);
             return;
           }
-          if (data && data.length > 0) newEntry = data[0];
+          if (data && data.length > 0) newEntry = { ...newEntry, ...data[0] };
         }
         setSales([newEntry, ...sales]);
         triggerToast(`✅ Sale entry "${saleForm.item_name}" added successfully.`);
@@ -433,7 +434,8 @@ export default function AdminPage() {
         // UPDATE
         const updatedEntry: PurchaseEntry = { ...editingPurchase, ...payloadForm, total_amount };
         if (supabase) {
-          await supabase.from('purchases').update(payloadForm).eq('id', editingPurchase.id);
+          const { unit, ...dbPayload } = payloadForm;
+          await supabase.from('purchases').update(dbPayload).eq('id', editingPurchase.id);
         }
         setPurchases(purchases.map(p => p.id === editingPurchase.id ? updatedEntry : p));
         triggerToast(`✏️ Purchase entry "${purchaseForm.item_name}" updated successfully.`);
@@ -441,13 +443,13 @@ export default function AdminPage() {
         // CREATE
         let newEntry: PurchaseEntry = { id: Date.now().toString(), ...payloadForm, total_amount };
         if (supabase) {
-          const { id, ...payload } = newEntry;
+          const { id, unit, ...payload } = newEntry;
           const { data, error } = await supabase.from('purchases').insert([payload]).select();
           if (error) {
             alert('Supabase Error: ' + error.message);
             return;
           }
-          if (data && data.length > 0) newEntry = data[0];
+          if (data && data.length > 0) newEntry = { ...newEntry, ...data[0] };
         }
         setPurchases([newEntry, ...purchases]);
         triggerToast(`✅ Purchase entry "${purchaseForm.item_name}" added successfully.`);
@@ -730,6 +732,8 @@ export default function AdminPage() {
           ? '0 10px 30px -5px rgba(245, 158, 11, 0.15), 0 4px 20px rgba(0,0,0,0.5)'
           : '0 10px 30px -5px rgba(99, 102, 241, 0.15), 0 4px 20px rgba(0,0,0,0.5)',
         backdropFilter: 'blur(16px)',
+        position: 'relative',
+        zIndex: 50,
         transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -1099,7 +1103,7 @@ export default function AdminPage() {
       )}
 
       {/* Main Content Area */}
-      <div style={{ maxWidth: '1400px', margin: '0 auto', background: '#111827', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '16px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto', background: '#111827', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '16px', boxShadow: '0 8px 24px rgba(0,0,0,0.4)', position: 'relative', zIndex: 1 }}>
 
         <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: '14px', gap: '4px' }}>
           <button
