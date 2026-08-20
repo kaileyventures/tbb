@@ -34,10 +34,13 @@
 }
 
 /* Base resets & typography */
-body, input, select, textarea, button, table {
+body {
   background-color: #FAF6F0; /* cream-bg */
   color: #2D2A26; /* charcoal */
   overflow-x: hidden;
+}
+
+body, input, select, textarea, button, table {
   font-family: var(--font-manrope), 'Manrope', system-ui, -apple-system, sans-serif !important;
 }
 
