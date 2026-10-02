@@ -17,14 +17,16 @@ export interface SaleEntry {
 export interface PurchaseEntry {
   id: string;
   date: string;
-  item_name: string;
-  supplier: string;
+  item_name: string; // Company / Item Name
+  supplier: string;  // Party / Supplier
   category: string;
   quantity: number;
   unit?: QuantityUnit | string;
   unit_price: number;
   total_amount: number;
   payment_status: 'Paid' | 'Pending' | 'Partial';
+  bill_no?: string;
+  payment_method?: string;
   notes?: string;
   created_at?: string;
 }

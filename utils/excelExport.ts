@@ -36,18 +36,31 @@ const formatRowForExcel = (row: any, type?: 'sale' | 'purchase') => {
       'Notes': row.notes || '-'
     };
   } else {
+    // Parse bill_no and payment_method if embedded in notes
+    let billNo = row.bill_no || '-';
+    let paymentMethod = row.payment_method || '-';
+    let desc = row.notes || '-';
+
+    if (row.notes && (billNo === '-' || paymentMethod === '-')) {
+      const match = row.notes.match(/^Bill:\s*(.*?)\s*\|\s*Method:\s*(.*?)(?:\s*\|\s*(.*))?$/i);
+      if (match) {
+        if (billNo === '-') billNo = match[1] || '-';
+        if (paymentMethod === '-') paymentMethod = match[2] || '-';
+        if (match[3]) desc = match[3];
+      }
+    }
+
     return {
       'Transaction Type': 'Purchase 📦',
       'Date': formatDateFormatted(row.date),
-      'Item / Raw Material': row.item_name || '',
-      'Supplier / Vendor': row.supplier || '-',
-      'Category': row.category || '',
-      'Quantity': row.quantity || 0,
-      'Unit': row.unit || 'Unit',
-      'Unit Cost (₹)': row.unit_price ? `₹${Number(row.unit_price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00',
-      'Total Purchase Cost (₹)': row.total_amount ? `₹${Number(row.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00',
-      'Payment Status': row.payment_status || '-',
-      'Notes': row.notes || '-'
+      'Party (Supplier)': row.supplier || '-',
+      'Company / Item': row.item_name || '',
+      'Bill No.': billNo,
+      'Payment Method': paymentMethod,
+      'Amount (₹)': row.total_amount ? `₹${Number(row.total_amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}` : '₹0.00',
+      'Payment Status': row.payment_status || 'Paid',
+      'Category': row.category || 'Raw Materials',
+      'Notes / Details': desc
     };
   }
 };
@@ -67,13 +80,13 @@ export const exportSingleToExcel = (data: any[], filename: string, sheetName: st
   worksheet['!cols'] = [
     { wch: 18 }, // Type
     { wch: 22 }, // Date
-    { wch: 28 }, // Item Name
-    { wch: 22 }, // Category / Supplier
-    { wch: 18 }, // Category
-    { wch: 12 }, // Quantity
-    { wch: 16 }, // Unit Price
-    { wch: 20 }, // Total Amount
-    { wch: 18 }, // Payment / Status
+    { wch: 26 }, // Party / Item Name
+    { wch: 26 }, // Company / Supplier
+    { wch: 18 }, // Bill No / Category
+    { wch: 18 }, // Payment Method / Qty
+    { wch: 18 }, // Amount / Unit Price
+    { wch: 18 }, // Payment Status / Total Amount
+    { wch: 18 }, // Category / Payment Method
     { wch: 30 }  // Notes
   ];
 

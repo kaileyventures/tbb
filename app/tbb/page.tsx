@@ -249,16 +249,30 @@ export default function AdminPage() {
     notes: ''
   });
 
+  // Helper to parse notes into bill_no, payment_method, and clean description
+  const parsePurchaseNotes = (notesStr?: string) => {
+    if (!notesStr) return { bill_no: '', payment_method: 'Cash', desc: '' };
+    const match = notesStr.match(/^Bill:\s*(.*?)\s*\|\s*Method:\s*(.*?)(?:\s*\|\s*(.*))?$/i);
+    if (match) {
+      return {
+        bill_no: match[1] === '-' ? '' : match[1].trim(),
+        payment_method: match[2] === '-' ? 'Cash' : match[2].trim(),
+        desc: (match[3] || '').trim()
+      };
+    }
+    return { bill_no: '', payment_method: 'Cash', desc: notesStr.trim() };
+  };
+
   // Form Fields - Purchase
   const [purchaseForm, setPurchaseForm] = useState({
     date: new Date().toISOString().slice(0, 10),
-    item_name: '',
-    supplier: '',
+    item_name: '', // Company / Item Name
+    supplier: '',  // Party / Supplier
     category: 'Raw Materials',
-    quantity: '' as string | number,
-    unit: 'Unit' as string,
-    unit_price: '' as string | number,
+    amount: '' as string | number, // Direct amount
     payment_status: 'Paid' as const,
+    bill_no: '',
+    payment_method: 'Cash' as string,
     notes: ''
   });
 
@@ -346,16 +360,17 @@ export default function AdminPage() {
   const openPurchaseModal = (purchase?: PurchaseEntry) => {
     if (purchase) {
       setEditingPurchase(purchase);
+      const parsed = parsePurchaseNotes(purchase.notes);
       setPurchaseForm({
         date: purchase.date,
         item_name: purchase.item_name,
         supplier: purchase.supplier,
-        category: purchase.category,
-        quantity: purchase.quantity,
-        unit: purchase.unit || 'Unit',
-        unit_price: purchase.unit_price,
+        category: purchase.category || 'Raw Materials',
+        amount: purchase.total_amount || purchase.unit_price || '',
         payment_status: purchase.payment_status as any,
-        notes: purchase.notes || ''
+        bill_no: purchase.bill_no || parsed.bill_no || '',
+        payment_method: purchase.payment_method || parsed.payment_method || 'Cash',
+        notes: parsed.desc || ''
       });
     } else {
       setEditingPurchase(null);
@@ -364,10 +379,10 @@ export default function AdminPage() {
         item_name: '',
         supplier: '',
         category: 'Raw Materials',
-        quantity: '',
-        unit: 'Unit',
-        unit_price: '',
+        amount: '',
         payment_status: 'Paid',
+        bill_no: '',
+        payment_method: 'Cash',
         notes: ''
       });
     }
@@ -444,22 +459,36 @@ export default function AdminPage() {
     setIsSavingQuickEntry(true);
 
     try {
-      const qty = Number(purchaseForm.quantity) || 0;
-      const price = Number(purchaseForm.unit_price) || 0;
-      const total_amount = qty * price;
+      const amt = Number(purchaseForm.amount) || 0;
+      const billNoStr = purchaseForm.bill_no?.trim() || '-';
+      const methodStr = purchaseForm.payment_method?.trim() || 'Cash';
+      const descStr = purchaseForm.notes?.trim() || '';
 
-      const payloadForm = {
-        ...purchaseForm,
-        quantity: qty,
-        unit_price: price,
-        total_amount
+      // Compose structured notes field: "Bill: <bill_no> | Method: <payment_method> | <description>"
+      const structuredNotes = `Bill: ${billNoStr} | Method: ${methodStr}${descStr ? ` | ${descStr}` : ''}`;
+
+      const dbPayload = {
+        date: purchaseForm.date,
+        item_name: purchaseForm.item_name.trim(),
+        supplier: purchaseForm.supplier.trim(),
+        category: purchaseForm.category || 'Raw Materials',
+        quantity: 1,
+        unit_price: amt,
+        total_amount: amt,
+        payment_status: purchaseForm.payment_status,
+        notes: structuredNotes
       };
 
       if (editingPurchase) {
         // UPDATE
-        const updatedEntry: PurchaseEntry = { ...editingPurchase, ...payloadForm };
+        const updatedEntry: PurchaseEntry = {
+          ...editingPurchase,
+          ...dbPayload,
+          bill_no: purchaseForm.bill_no?.trim() || '',
+          payment_method: methodStr
+        };
+
         if (supabase) {
-          const { unit, ...dbPayload } = payloadForm;
           const { error: updateErr } = await supabase.from('purchases').update(dbPayload).eq('id', editingPurchase.id);
           if (updateErr) {
             console.error('Supabase Purchase Update Error:', updateErr);
@@ -470,10 +499,16 @@ export default function AdminPage() {
         triggerToast(`✏️ Purchase entry "${purchaseForm.item_name}" updated successfully.`);
       } else {
         // CREATE
-        let newEntry: PurchaseEntry = { id: Date.now().toString(), ...payloadForm };
+        let newEntry: PurchaseEntry = {
+          id: Date.now().toString(),
+          ...dbPayload,
+          bill_no: purchaseForm.bill_no?.trim() || '',
+          payment_method: methodStr
+        };
+
         if (supabase) {
-          const { id, unit, ...payload } = newEntry;
-          const { data, error } = await supabase.from('purchases').insert([payload]).select();
+          const { id, ...insertPayload } = newEntry;
+          const { data, error } = await supabase.from('purchases').insert([insertPayload]).select();
           if (error) {
             console.error('Supabase Purchase Insert Error:', error);
             triggerToast(`⚠️ Saved locally, but Supabase error: ${error.message}`);
@@ -491,8 +526,9 @@ export default function AdminPage() {
         ...prev,
         item_name: '',
         supplier: '',
-        quantity: '',
-        unit_price: '',
+        amount: '',
+        bill_no: '',
+        payment_method: 'Cash',
         notes: ''
       }));
     } catch (err: any) {
@@ -1015,23 +1051,10 @@ export default function AdminPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '10px', fontWeight: '700', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Item / Supply *</label>
+              <label style={{ fontSize: '10px', fontWeight: '700', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Party / Supplier *</label>
               <AutoSuggestInput
                 required
-                placeholder="e.g. Flour 50kg..."
-                value={purchaseForm.item_name}
-                onChange={(val) => setPurchaseForm({ ...purchaseForm, item_name: val })}
-                options={existingPurchaseItemNames}
-                maxSuggestions={5}
-                style={{ height: '34px', padding: '6px 10px', fontSize: '12px', background: '#1e293b', borderRadius: '8px' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '10px', fontWeight: '700', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Supplier *</label>
-              <AutoSuggestInput
-                required
-                placeholder="e.g. GrainCo Ltd..."
+                placeholder="e.g. Murria Sale's..."
                 value={purchaseForm.supplier}
                 onChange={(val) => setPurchaseForm({ ...purchaseForm, supplier: val })}
                 options={existingSuppliers}
@@ -1041,53 +1064,52 @@ export default function AdminPage() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Category</label>
+              <label style={{ fontSize: '10px', fontWeight: '700', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Company / Item *</label>
+              <AutoSuggestInput
+                required
+                placeholder="e.g. Mogu, Coca cola, Paneer..."
+                value={purchaseForm.item_name}
+                onChange={(val) => setPurchaseForm({ ...purchaseForm, item_name: val })}
+                options={existingPurchaseItemNames}
+                maxSuggestions={5}
+                style={{ height: '34px', padding: '6px 10px', fontSize: '12px', background: '#1e293b', borderRadius: '8px' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Bill No.</label>
+              <input
+                type="text"
+                placeholder="e.g. MSC/035"
+                value={purchaseForm.bill_no}
+                onChange={(e) => setPurchaseForm({ ...purchaseForm, bill_no: e.target.value })}
+                style={{ width: '100%', padding: '6px 10px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: '#fff', fontSize: '12px', height: '34px', outline: 'none' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              <label style={{ fontSize: '10px', fontWeight: '700', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Payment</label>
               <select
-                value={purchaseForm.category}
-                onChange={(e) => setPurchaseForm({ ...purchaseForm, category: e.target.value })}
-                style={{ width: '100%', padding: '6px 10px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: '#fff', fontSize: '12px', height: '34px', outline: 'none' }}>
-                <option value="Raw Materials">Raw Materials</option>
-                <option value="Dairy">Dairy</option>
-                <option value="Packaging">Packaging</option>
-                <option value="Equipment">Equipment</option>
-                <option value="Utilities">Utilities</option>
+                value={purchaseForm.payment_method}
+                onChange={(e) => setPurchaseForm({ ...purchaseForm, payment_method: e.target.value })}
+                style={{ width: '100%', padding: '6px 8px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: '#818cf8', fontSize: '12px', fontWeight: '600', height: '34px', outline: 'none' }}>
+                <option value="Cash">Cash</option>
+                <option value="GPay">GPay / UPI</option>
+                <option value="Card">Card</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Murria">Murria</option>
+                <option value="Cheque">Cheque</option>
               </select>
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '10px', fontWeight: '700', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Qty & Unit *</label>
-              <div style={{ display: 'flex', gap: '4px' }}>
-                <input
-                  type="number" min="1" required
-                  placeholder="Qty"
-                  value={purchaseForm.quantity}
-                  onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
-                  onChange={(e) => setPurchaseForm({ ...purchaseForm, quantity: e.target.value === '' ? '' : Number(e.target.value) })}
-                  style={{ flex: 1, minWidth: '50px', padding: '6px 8px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: '#fff', fontSize: '12px', height: '34px', outline: 'none' }}
-                />
-                <select
-                  value={purchaseForm.unit}
-                  onChange={(e) => setPurchaseForm({ ...purchaseForm, unit: e.target.value })}
-                  style={{ width: '70px', padding: '6px 4px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: '#818cf8', fontSize: '11px', fontWeight: '700', height: '34px', outline: 'none' }}>
-                  <option value="Unit">Unit</option>
-                  <option value="KG">KG</option>
-                  <option value="Grams">Grams</option>
-                  <option value="Pcs">Pcs</option>
-                  <option value="Packet">Packet</option>
-                  <option value="Litre">Litre</option>
-                  <option value="Box">Box</option>
-                </select>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '10px', fontWeight: '700', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Unit Cost (₹) *</label>
+              <label style={{ fontSize: '10px', fontWeight: '700', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Amount (₹) *</label>
               <input
                 type="number" step="0.01" min="0" required
-                placeholder="Cost"
-                value={purchaseForm.unit_price}
+                placeholder="₹ Amount"
+                value={purchaseForm.amount}
                 onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
-                onChange={(e) => setPurchaseForm({ ...purchaseForm, unit_price: e.target.value === '' ? '' : Number(e.target.value) })}
+                onChange={(e) => setPurchaseForm({ ...purchaseForm, amount: e.target.value === '' ? '' : Number(e.target.value) })}
                 style={{ width: '100%', padding: '6px 10px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '8px', color: '#fff', fontSize: '12px', height: '34px', outline: 'none' }}
               />
             </div>
@@ -1106,23 +1128,23 @@ export default function AdminPage() {
 
             <button
               type="submit"
-              disabled={isSavingQuickEntry || (Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0) <= 0}
+              disabled={isSavingQuickEntry || (Number(purchaseForm.amount) || 0) <= 0}
               style={{
-                padding: '8px 24px',
+                padding: '8px 20px',
                 height: '36px',
                 whiteSpace: 'nowrap',
                 background: isSavingQuickEntry
                   ? '#475569'
-                  : ((Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0) > 0)
+                  : ((Number(purchaseForm.amount) || 0) > 0)
                     ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)'
                     : 'rgba(255,255,255,0.05)',
-                border: ((Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0) > 0) ? 'none' : '1px solid rgba(255,255,255,0.08)',
+                border: ((Number(purchaseForm.amount) || 0) > 0) ? 'none' : '1px solid rgba(255,255,255,0.08)',
                 borderRadius: '8px',
-                color: isSavingQuickEntry ? '#cbd5e1' : ((Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0) > 0) ? '#fff' : '#64748b',
+                color: isSavingQuickEntry ? '#cbd5e1' : ((Number(purchaseForm.amount) || 0) > 0) ? '#fff' : '#64748b',
                 fontWeight: '700',
                 fontSize: '12px',
-                cursor: (isSavingQuickEntry || (Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0) <= 0) ? 'not-allowed' : 'pointer',
-                boxShadow: ((Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0) > 0) ? '0 4px 14px rgba(99, 102, 241, 0.35)' : 'none',
+                cursor: (isSavingQuickEntry || (Number(purchaseForm.amount) || 0) <= 0) ? 'not-allowed' : 'pointer',
+                boxShadow: ((Number(purchaseForm.amount) || 0) > 0) ? '0 4px 14px rgba(99, 102, 241, 0.35)' : 'none',
                 display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1133,7 +1155,7 @@ export default function AdminPage() {
                 <>⏳ Saving...</>
               ) : (
                 <>
-                  <PlusCircle size={15} /> Add Purchase (₹{formatIndianCurrency((Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0), false)})
+                  <PlusCircle size={15} /> Add Purchase (₹{formatIndianCurrency(Number(purchaseForm.amount) || 0, false)})
                 </>
               )}
             </button>
@@ -1494,6 +1516,11 @@ export default function AdminPage() {
                       );
                     } else {
                       const purchase = item.data;
+                      const parsed = parsePurchaseNotes(purchase.notes);
+                      const billNo = purchase.bill_no || parsed.bill_no;
+                      const paymentMethod = purchase.payment_method || parsed.payment_method || 'Cash';
+                      const desc = parsed.desc;
+
                       return (
                         <tr key={item.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', transition: 'background 0.15s' }}>
                           <td style={{ padding: '8px 10px' }}>
@@ -1505,29 +1532,47 @@ export default function AdminPage() {
                             {formatDateFormatted(purchase.date)}
                           </td>
                           <td style={{ padding: '8px 10px', fontWeight: '700', color: '#f8fafc', fontSize: '13px' }}>
-                            {purchase.item_name}
-                            <span style={{ display: 'block', fontSize: '10px', color: '#818cf8', fontWeight: '500' }}>Via {purchase.supplier}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                              <span>{purchase.item_name}</span>
+                              {billNo && (
+                                <span style={{ padding: '1px 6px', background: 'rgba(129, 140, 248, 0.12)', border: '1px solid rgba(129, 140, 248, 0.3)', borderRadius: '4px', color: '#a5b4fc', fontSize: '10px', fontWeight: '600' }}>
+                                  #{billNo}
+                                </span>
+                              )}
+                            </div>
+                            <span style={{ display: 'block', fontSize: '11px', color: '#818cf8', fontWeight: '600', marginTop: '2px' }}>
+                              Party: {purchase.supplier}
+                            </span>
+                            {desc && <span style={{ display: 'block', fontSize: '10px', color: '#64748b', marginTop: '1px' }}>{desc}</span>}
                           </td>
                           <td style={{ padding: '8px 10px' }}>
                             <span style={{ padding: '2px 8px', background: 'rgba(255, 255, 255, 0.05)', color: '#94a3b8', borderRadius: '4px', fontSize: '11px' }}>
-                              {purchase.category}
+                              {purchase.category || 'Raw Materials'}
                             </span>
                           </td>
                           <td style={{ padding: '8px 10px', fontWeight: '600' }}>
-                            {purchase.quantity} <span style={{ fontSize: '11px', color: '#94a3b8' }}>{purchase.unit || 'Unit'}</span>
+                            {purchase.quantity || 1} <span style={{ fontSize: '11px', color: '#94a3b8' }}>{purchase.unit || 'Unit'}</span>
                           </td>
-                          <td style={{ padding: '8px 10px', color: '#cbd5e1' }}>₹{formatIndianCurrency(purchase.unit_price)}</td>
+                          <td style={{ padding: '8px 10px', color: '#cbd5e1' }}>₹{formatIndianCurrency(purchase.unit_price || purchase.total_amount)}</td>
                           <td style={{ padding: '8px 10px', fontWeight: '800', color: '#f87171' }}>-₹{formatIndianCurrency(purchase.total_amount)}</td>
                           <td style={{ padding: '8px 10px' }}>
-                            <span style={{
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              fontSize: '11px',
-                              background: purchase.payment_status === 'Paid' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-                              color: purchase.payment_status === 'Paid' ? '#4ade80' : '#f87171'
-                            }}>
-                              {purchase.payment_status}
-                            </span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                              <span style={{
+                                display: 'inline-block',
+                                width: 'fit-content',
+                                padding: '2px 8px',
+                                borderRadius: '4px',
+                                fontSize: '10px',
+                                fontWeight: '700',
+                                background: purchase.payment_status === 'Paid' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                                color: purchase.payment_status === 'Paid' ? '#4ade80' : '#f87171'
+                              }}>
+                                {purchase.payment_status || 'Paid'}
+                              </span>
+                              <span style={{ fontSize: '10px', color: '#cbd5e1' }}>
+                                Method: <b style={{ color: '#818cf8' }}>{paymentMethod}</b>
+                              </span>
+                            </div>
                           </td>
                           <td style={{ padding: '8px 10px', color: '#818cf8', whiteSpace: 'nowrap', fontSize: '11px', fontWeight: '600' }}>
                             {formatEntryFullDateTime(purchase.created_at, purchase.id)}
@@ -1766,25 +1811,25 @@ export default function AdminPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#94a3b8', marginBottom: '6px' }}>Item / Raw Material</label>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#818cf8', marginBottom: '6px' }}>Party / Supplier *</label>
                   <AutoSuggestInput
                     required
-                    placeholder="e.g. Flour 50kg"
-                    value={purchaseForm.item_name}
-                    onChange={(val) => setPurchaseForm({ ...purchaseForm, item_name: val })}
-                    options={existingPurchaseItemNames}
+                    placeholder="e.g. Murria Sale's"
+                    value={purchaseForm.supplier}
+                    onChange={(val) => setPurchaseForm({ ...purchaseForm, supplier: val })}
+                    options={existingSuppliers}
                     maxSuggestions={5}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#94a3b8', marginBottom: '6px' }}>Supplier Vendor</label>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#818cf8', marginBottom: '6px' }}>Company / Item Name *</label>
                   <AutoSuggestInput
                     required
-                    placeholder="e.g. GrainCo Ltd"
-                    value={purchaseForm.supplier}
-                    onChange={(val) => setPurchaseForm({ ...purchaseForm, supplier: val })}
-                    options={existingSuppliers}
+                    placeholder="e.g. Mogu, Coca cola, Paneer"
+                    value={purchaseForm.item_name}
+                    onChange={(val) => setPurchaseForm({ ...purchaseForm, item_name: val })}
+                    options={existingPurchaseItemNames}
                     maxSuggestions={5}
                   />
                 </div>
@@ -1792,17 +1837,46 @@ export default function AdminPage() {
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#94a3b8', marginBottom: '6px' }}>Category</label>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#94a3b8', marginBottom: '6px' }}>Bill No.</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. MSC/035"
+                    value={purchaseForm.bill_no}
+                    onChange={(e) => setPurchaseForm({ ...purchaseForm, bill_no: e.target.value })}
+                    style={{ width: '100%', padding: '10px', background: '#1f2937', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#fff' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#94a3b8', marginBottom: '6px' }}>Payment Method</label>
                   <select
-                    value={purchaseForm.category}
-                    onChange={(e) => setPurchaseForm({ ...purchaseForm, category: e.target.value })}
-                    style={{ width: '100%', padding: '10px', background: '#1f2937', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#fff' }}>
-                    <option value="Raw Materials">Raw Materials</option>
-                    <option value="Dairy">Dairy</option>
-                    <option value="Packaging">Packaging</option>
-                    <option value="Equipment">Equipment</option>
-                    <option value="Utilities">Utilities</option>
+                    value={purchaseForm.payment_method}
+                    onChange={(e) => setPurchaseForm({ ...purchaseForm, payment_method: e.target.value })}
+                    style={{ width: '100%', padding: '10px', background: '#1f2937', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#818cf8', fontWeight: '600' }}>
+                    <option value="Cash">Cash</option>
+                    <option value="GPay">GPay / UPI</option>
+                    <option value="Card">Card</option>
+                    <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="Murria">Murria</option>
+                    <option value="Cheque">Cheque</option>
                   </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#818cf8', marginBottom: '6px' }}>Amount (₹) *</label>
+                  <input
+                    type="number" step="0.01" min="0" required
+                    placeholder="Enter total amount (₹)..."
+                    value={purchaseForm.amount}
+                    onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setPurchaseForm({ ...purchaseForm, amount: val === '' ? '' : Number(val) });
+                    }}
+                    style={{ width: '100%', padding: '10px', background: '#1f2937', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#fff', fontSize: '14px', fontWeight: '700' }}
+                  />
                 </div>
 
                 <div>
@@ -1818,55 +1892,20 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#94a3b8', marginBottom: '6px' }}>Quantity & Unit</label>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <input
-                      type="number" min="1" required
-                      placeholder="Qty..."
-                      value={purchaseForm.quantity}
-                      onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setPurchaseForm({ ...purchaseForm, quantity: val === '' ? '' : Number(val) });
-                      }}
-                      style={{ flex: 1, padding: '10px', background: '#1f2937', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#fff' }}
-                    />
-                    <select
-                      value={purchaseForm.unit}
-                      onChange={(e) => setPurchaseForm({ ...purchaseForm, unit: e.target.value })}
-                      style={{ width: '90px', padding: '10px', background: '#1f2937', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#818cf8', fontWeight: '700' }}>
-                      <option value="Unit">Unit</option>
-                      <option value="KG">KG</option>
-                      <option value="Grams">Grams</option>
-                      <option value="Pcs">Pcs</option>
-                      <option value="Packet">Packet</option>
-                      <option value="Litre">Litre</option>
-                      <option value="Box">Box</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#94a3b8', marginBottom: '6px' }}>Unit Cost (₹)</label>
-                  <input
-                    type="number" step="0.01" min="0" required
-                    placeholder="Enter Price..."
-                    value={purchaseForm.unit_price}
-                    onKeyDown={(e) => ['e', 'E', '+', '-'].includes(e.key) && e.preventDefault()}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setPurchaseForm({ ...purchaseForm, unit_price: val === '' ? '' : Number(val) });
-                    }}
-                    style={{ width: '100%', padding: '10px', background: '#1f2937', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#fff' }}
-                  />
-                </div>
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#94a3b8', marginBottom: '6px' }}>Description / Notes (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Extra flavour syrup, batch notes..."
+                  value={purchaseForm.notes}
+                  onChange={(e) => setPurchaseForm({ ...purchaseForm, notes: e.target.value })}
+                  style={{ width: '100%', padding: '10px', background: '#1f2937', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '10px', color: '#fff' }}
+                />
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: 'rgba(99,102,241,0.1)', borderRadius: '10px', color: '#818cf8', fontWeight: '700' }}>
                 <span>Total Purchase Cost:</span>
-                <span>₹{formatIndianCurrency((Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0))}</span>
+                <span>₹{formatIndianCurrency(Number(purchaseForm.amount) || 0)}</span>
               </div>
 
               <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
@@ -1878,19 +1917,19 @@ export default function AdminPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={(Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0) <= 0}
+                  disabled={(Number(purchaseForm.amount) || 0) <= 0}
                   style={{
                     flex: 1,
                     padding: '12px',
-                    background: ((Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0) > 0)
+                    background: ((Number(purchaseForm.amount) || 0) > 0)
                       ? 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)'
                       : '#374151',
                     border: 'none',
                     borderRadius: '10px',
-                    color: ((Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0) > 0) ? '#fff' : '#9ca3af',
+                    color: ((Number(purchaseForm.amount) || 0) > 0) ? '#fff' : '#9ca3af',
                     fontWeight: '700',
-                    cursor: ((Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0) > 0) ? 'pointer' : 'not-allowed',
-                    opacity: ((Number(purchaseForm.quantity) || 0) * (Number(purchaseForm.unit_price) || 0) > 0) ? 1 : 0.65
+                    cursor: ((Number(purchaseForm.amount) || 0) > 0) ? 'pointer' : 'not-allowed',
+                    opacity: ((Number(purchaseForm.amount) || 0) > 0) ? 1 : 0.65
                   }}>
                   {editingPurchase ? 'Update Purchase Entry' : 'Save Purchase Entry'}
                 </button>
