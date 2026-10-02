@@ -86,6 +86,28 @@ const formatIndianCurrency = (amount: number, showDecimals: boolean = true): str
   });
 };
 
+// Helper to get current month start and end dates (YYYY-MM-DD)
+const getCurrentMonthRange = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-indexed
+  const start = new Date(year, month, 1);
+  const end = new Date(year, month + 1, 0);
+
+  const formatISO = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  return {
+    startDate: formatISO(start),
+    endDate: formatISO(end),
+    monthKey: `${year}-${String(month + 1).padStart(2, '0')}`
+  };
+};
+
 export default function AdminPage() {
   // Password Authentication State
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -102,10 +124,12 @@ export default function AdminPage() {
   // Toast Notification Pop-up State
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Filters & Search & Pagination State
+  // Filters & Search & Pagination State (Default date range = current month)
+  const currentMonthInit = getCurrentMonthRange();
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterStartDate, setFilterStartDate] = useState('');
-  const [filterEndDate, setFilterEndDate] = useState('');
+  const [filterStartDate, setFilterStartDate] = useState(currentMonthInit.startDate);
+  const [filterEndDate, setFilterEndDate] = useState(currentMonthInit.endDate);
+  const [selectedMonthKey, setSelectedMonthKey] = useState<string>(currentMonthInit.monthKey);
   const [ledgerFilter, setLedgerFilter] = useState<'all' | 'sales' | 'purchases' | 'trash'>('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
@@ -658,6 +682,49 @@ export default function AdminPage() {
   const totalSalesAmount = filteredSales.reduce((acc: number, curr: SaleEntry) => acc + curr.total_amount, 0);
   const totalPurchaseAmount = filteredPurchases.reduce((acc: number, curr: PurchaseEntry) => acc + curr.total_amount, 0);
   const netProfit = totalSalesAmount - totalPurchaseAmount;
+
+  // Extract unique months present across all sales and purchases
+  const availableMonths = React.useMemo(() => {
+    const monthSet = new Set<string>();
+    [...sales, ...purchases].forEach(item => {
+      if (item.date && item.date.length >= 7) {
+        monthSet.add(item.date.slice(0, 7)); // 'YYYY-MM'
+      }
+    });
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return Array.from(monthSet)
+      .sort((a, b) => b.localeCompare(a)) // Latest month first
+      .map(key => {
+        const [yearStr, monthStr] = key.split('-');
+        const monthIndex = parseInt(monthStr, 10) - 1;
+        const label = `${monthNames[monthIndex] || monthStr} ${yearStr}`;
+        return { key, label, year: parseInt(yearStr, 10), monthIndex };
+      });
+  }, [sales, purchases]);
+
+  // Handler when user selects a specific month from the Month filter dropdown
+  const handleMonthFilterChange = (monthKey: string) => {
+    setSelectedMonthKey(monthKey);
+    if (monthKey === 'all') {
+      setFilterStartDate('');
+      setFilterEndDate('');
+    } else if (monthKey === 'custom') {
+      // Keep existing manual date range
+    } else {
+      const [y, m] = monthKey.split('-').map(Number);
+      const start = new Date(y, m - 1, 1);
+      const end = new Date(y, m, 0);
+      const formatISO = (d: Date) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      setFilterStartDate(formatISO(start));
+      setFilterEndDate(formatISO(end));
+    }
+  };
 
   // Extract unique previous entries for auto-suggestions (max 5)
   const existingSaleItemNames = Array.from(new Set(sales.map(s => s.item_name)));
@@ -1264,7 +1331,7 @@ export default function AdminPage() {
         </div>
 
         {/* Filters and Date Pickers */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px', marginBottom: '14px', background: 'rgba(255,255,255,0.02)', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px', marginBottom: '14px', background: 'rgba(255,255,255,0.02)', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: '11px', fontWeight: '600', color: '#94a3b8' }}>Search Keyword</label>
             <div style={{ position: 'relative' }}>
@@ -1279,6 +1346,25 @@ export default function AdminPage() {
             </div>
           </div>
 
+          {/* Month Selector Filter */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <label style={{ fontSize: '11px', fontWeight: '700', color: '#fbbf24' }}>Select Month</label>
+            <select
+              value={selectedMonthKey}
+              onChange={(e) => handleMonthFilterChange(e.target.value)}
+              style={{ width: '100%', padding: '6px 10px', background: '#1f2937', border: '1px solid rgba(245, 158, 11, 0.4)', borderRadius: '8px', color: '#fbbf24', fontSize: '12px', fontWeight: '700', height: '32px', outline: 'none' }}>
+              <option value="all">All Months (Show All Data)</option>
+              {availableMonths.map(m => (
+                <option key={m.key} value={m.key}>
+                  {m.label}
+                </option>
+              ))}
+              {selectedMonthKey === 'custom' && (
+                <option value="custom">Custom Range</option>
+              )}
+            </select>
+          </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             <label style={{ fontSize: '11px', fontWeight: '600', color: '#94a3b8' }}>From Date</label>
             <CustomDatePicker
@@ -1286,6 +1372,7 @@ export default function AdminPage() {
               onChange={(e: any) => {
                 const newStart = e.target.value;
                 setFilterStartDate(newStart);
+                setSelectedMonthKey('custom');
                 if (filterEndDate && newStart > filterEndDate) {
                   setFilterEndDate(newStart);
                 }
@@ -1302,6 +1389,7 @@ export default function AdminPage() {
               min={filterStartDate}
               onChange={(e: any) => {
                 const newEnd = e.target.value;
+                setSelectedMonthKey('custom');
                 if (!filterStartDate || newEnd >= filterStartDate) {
                   setFilterEndDate(newEnd);
                 } else {
@@ -1328,9 +1416,19 @@ export default function AdminPage() {
 
           <div style={{ display: 'flex', alignItems: 'flex-end' }}>
             <button
-              onClick={() => { setSearchTerm(''); setFilterStartDate(''); setFilterEndDate(''); setLedgerFilter('all'); setPageSize(30); setSortField('createdTimestamp'); setSortOrder('desc'); }}
+              onClick={() => {
+                const def = getCurrentMonthRange();
+                setSearchTerm('');
+                setFilterStartDate(def.startDate);
+                setFilterEndDate(def.endDate);
+                setSelectedMonthKey(def.monthKey);
+                setLedgerFilter('all');
+                setPageSize(30);
+                setSortField('createdTimestamp');
+                setSortOrder('desc');
+              }}
               style={{ width: '100%', padding: '6px 8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#94a3b8', fontSize: '12px', fontWeight: '600', cursor: 'pointer', height: '32px', transition: 'all 0.15s' }}>
-              Reset Filters
+              Reset (Current Month)
             </button>
           </div>
         </div>
