@@ -26,7 +26,13 @@ import {
   SlidersHorizontal,
   ChevronDown,
   Check,
-  Sparkles
+  Sparkles,
+  Eye,
+  EyeOff,
+  BarChart3,
+  PieChart,
+  CreditCard,
+  Layers
 } from 'lucide-react';
 
 const INITIAL_SALES: SaleEntry[] = [
@@ -143,6 +149,8 @@ export default function AdminPage() {
   const [minAmount, setMinAmount] = useState<string>('');
   const [maxAmount, setMaxAmount] = useState<string>('');
   const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
+  const [showSummaryMetrics, setShowSummaryMetrics] = useState<boolean>(false); // Default hidden as requested
+  const [metricBreakdownTab, setMetricBreakdownTab] = useState<'payment' | 'category'>('payment');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
 
@@ -790,6 +798,53 @@ export default function AdminPage() {
   const totalPurchaseAmount = filteredPurchases.reduce((acc: number, curr: PurchaseEntry) => acc + curr.total_amount, 0);
   const netProfit = totalSalesAmount - totalPurchaseAmount;
 
+  // Breakdown by Payment Method for filtered records
+  const salesByPaymentMethod = React.useMemo(() => {
+    const map: Record<string, { count: number; total: number }> = {};
+    filteredSales.forEach(s => {
+      const method = s.payment_method || 'Other';
+      if (!map[method]) map[method] = { count: 0, total: 0 };
+      map[method].count += 1;
+      map[method].total += Number(s.total_amount) || 0;
+    });
+    return Object.entries(map).sort((a, b) => b[1].total - a[1].total);
+  }, [filteredSales]);
+
+  const purchasesByPaymentMethod = React.useMemo(() => {
+    const map: Record<string, { count: number; total: number }> = {};
+    filteredPurchases.forEach(p => {
+      const parsed = parsePurchaseNotes(p.notes);
+      const method = p.payment_method || parsed.payment_method || 'Cash';
+      if (!map[method]) map[method] = { count: 0, total: 0 };
+      map[method].count += 1;
+      map[method].total += Number(p.total_amount) || 0;
+    });
+    return Object.entries(map).sort((a, b) => b[1].total - a[1].total);
+  }, [filteredPurchases]);
+
+  // Breakdown by Category for filtered records
+  const salesByCategory = React.useMemo(() => {
+    const map: Record<string, { count: number; total: number }> = {};
+    filteredSales.forEach(s => {
+      const cat = s.category || 'Uncategorized';
+      if (!map[cat]) map[cat] = { count: 0, total: 0 };
+      map[cat].count += 1;
+      map[cat].total += Number(s.total_amount) || 0;
+    });
+    return Object.entries(map).sort((a, b) => b[1].total - a[1].total);
+  }, [filteredSales]);
+
+  const purchasesByCategory = React.useMemo(() => {
+    const map: Record<string, { count: number; total: number }> = {};
+    filteredPurchases.forEach(p => {
+      const cat = p.category || 'Raw Materials';
+      if (!map[cat]) map[cat] = { count: 0, total: 0 };
+      map[cat].count += 1;
+      map[cat].total += Number(p.total_amount) || 0;
+    });
+    return Object.entries(map).sort((a, b) => b[1].total - a[1].total);
+  }, [filteredPurchases]);
+
   // Extract unique months present across all sales and purchases
   const availableMonths = React.useMemo(() => {
     const monthSet = new Set<string>();
@@ -939,7 +994,30 @@ export default function AdminPage() {
         </div>
 
         {/* Top Actions */}
-        <div style={{ display: 'flex', gap: '12px' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {/* Hide / Unhide Analytics Metrics Toggle Button (Default Hidden) */}
+          <button
+            type="button"
+            onClick={() => setShowSummaryMetrics(prev => !prev)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: showSummaryMetrics ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255, 255, 255, 0.06)',
+              border: showSummaryMetrics ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
+              color: showSummaryMetrics ? '#fbbf24' : '#94a3b8',
+              padding: '8px 14px',
+              borderRadius: '10px',
+              fontWeight: '700',
+              fontSize: '13px',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              boxShadow: showSummaryMetrics ? '0 2px 10px rgba(245, 158, 11, 0.2)' : 'none'
+            }}>
+            {showSummaryMetrics ? <EyeOff size={15} /> : <Eye size={15} />}
+            <span>{showSummaryMetrics ? 'Hide Analytics' : 'Show Analytics'}</span>
+          </button>
+
           <button
             onClick={() => setShowExportModal(true)}
             style={{
@@ -949,14 +1027,14 @@ export default function AdminPage() {
               background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
               color: '#fff',
               border: 'none',
-              padding: '10px 18px',
+              padding: '9px 16px',
               borderRadius: '10px',
               fontWeight: '600',
-              fontSize: '14px',
+              fontSize: '13px',
               cursor: 'pointer',
               boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)'
             }}>
-            <FileSpreadsheet size={16} /> Export to Excel
+            <FileSpreadsheet size={15} /> Export to Excel
           </button>
           <button
             onClick={() => setShowEntryTypeModal(true)}
@@ -967,68 +1045,261 @@ export default function AdminPage() {
               background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
               color: '#fff',
               border: 'none',
-              padding: '10px 18px',
+              padding: '9px 16px',
               borderRadius: '10px',
               fontWeight: '700',
-              fontSize: '14px',
+              fontSize: '13px',
               cursor: 'pointer',
               boxShadow: '0 4px 14px rgba(59, 130, 246, 0.35)',
               transition: 'all 0.2s ease'
             }}>
-            <PlusCircle size={18} /> Add New Entry
+            <PlusCircle size={16} /> Add New Entry
           </button>
         </div>
       </div>
 
-      {/* Quick Summary Metric Cards */}
-      <div style={{ maxWidth: '1400px', margin: '0 auto 16px auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px' }}>
+      {/* Collapsible Summary Metric Cards & Payment / Category Breakdown (Default Hidden) */}
+      {showSummaryMetrics && (
+        <div style={{
+          maxWidth: '1400px',
+          margin: '0 auto 16px auto',
+          background: 'linear-gradient(145deg, rgba(17, 24, 39, 0.95) 0%, rgba(15, 23, 42, 0.95) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '16px',
+          padding: '16px',
+          boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.5)',
+          animation: 'fadeIn 0.25s ease-out'
+        }}>
+          {/* Top Header of Analytics Bar */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ padding: '6px', background: 'rgba(245, 158, 11, 0.15)', borderRadius: '8px', color: '#fbbf24' }}>
+                <BarChart3 size={16} />
+              </div>
+              <div>
+                <span style={{ fontSize: '14px', fontWeight: '800', color: '#f8fafc' }}>Financial Analytics & Category Summary</span>
+                <span style={{ display: 'block', fontSize: '11px', color: '#94a3b8' }}>Real-time calculations based on active filters</span>
+              </div>
+            </div>
 
-        <div style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '12px 16px', boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: '#94a3b8', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Revenue (Sales)</span>
-            <div style={{ padding: '5px', background: 'rgba(34, 197, 94, 0.12)', borderRadius: '6px', color: '#4ade80' }}>
-              <TrendingUp size={14} />
+            {/* Toggle Tab between Payment Methods and Categories Breakdown */}
+            <div style={{ display: 'flex', background: 'rgba(15, 23, 42, 0.8)', padding: '3px', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              <button
+                type="button"
+                onClick={() => setMetricBreakdownTab('payment')}
+                style={{
+                  padding: '4px 10px',
+                  background: metricBreakdownTab === 'payment' ? 'rgba(99, 102, 241, 0.25)' : 'transparent',
+                  border: metricBreakdownTab === 'payment' ? '1px solid rgba(99, 102, 241, 0.5)' : '1px solid transparent',
+                  borderRadius: '6px',
+                  color: metricBreakdownTab === 'payment' ? '#a5b4fc' : '#94a3b8',
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                <CreditCard size={12} /> Payment Methods
+              </button>
+              <button
+                type="button"
+                onClick={() => setMetricBreakdownTab('category')}
+                style={{
+                  padding: '4px 10px',
+                  background: metricBreakdownTab === 'category' ? 'rgba(245, 158, 11, 0.25)' : 'transparent',
+                  border: metricBreakdownTab === 'category' ? '1px solid rgba(245, 158, 11, 0.5)' : '1px solid transparent',
+                  borderRadius: '6px',
+                  color: metricBreakdownTab === 'category' ? '#fbbf24' : '#94a3b8',
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                <Layers size={12} /> Category Breakdown
+              </button>
             </div>
           </div>
-          <div style={{ fontSize: '20px', fontWeight: '800', marginTop: '6px', color: '#f8fafc' }}>
-            ₹{formatIndianCurrency(totalSalesAmount)}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '11px', color: '#4ade80' }}>
-            <ArrowUpRight size={12} /> {filteredSales.length} total transaction entries
-          </div>
-        </div>
 
-        <div style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '12px 16px', boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: '#94a3b8', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Expenses (Purchases)</span>
-            <div style={{ padding: '5px', background: 'rgba(239, 68, 68, 0.12)', borderRadius: '6px', color: '#f87171' }}>
-              <ShoppingBag size={14} />
+          {/* 3 Main Metric Cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px', marginBottom: '14px' }}>
+            <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(34, 197, 94, 0.25)', borderRadius: '12px', padding: '12px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#94a3b8', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Revenue (Sales)</span>
+                <div style={{ padding: '5px', background: 'rgba(34, 197, 94, 0.12)', borderRadius: '6px', color: '#4ade80' }}>
+                  <TrendingUp size={14} />
+                </div>
+              </div>
+              <div style={{ fontSize: '22px', fontWeight: '800', marginTop: '6px', color: '#4ade80' }}>
+                ₹{formatIndianCurrency(totalSalesAmount)}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '11px', color: '#94a3b8' }}>
+                <ArrowUpRight size={12} style={{ color: '#4ade80' }} /> {filteredSales.length} total sale entries
+              </div>
+            </div>
+
+            <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '12px', padding: '12px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#94a3b8', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Expenses (Purchases)</span>
+                <div style={{ padding: '5px', background: 'rgba(239, 68, 68, 0.12)', borderRadius: '6px', color: '#f87171' }}>
+                  <ShoppingBag size={14} />
+                </div>
+              </div>
+              <div style={{ fontSize: '22px', fontWeight: '800', marginTop: '6px', color: '#f87171' }}>
+                ₹{formatIndianCurrency(totalPurchaseAmount)}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '11px', color: '#94a3b8' }}>
+                <ArrowDownRight size={12} style={{ color: '#f87171' }} /> {filteredPurchases.length} purchase / supplier orders
+              </div>
+            </div>
+
+            <div style={{ background: 'rgba(15, 23, 42, 0.6)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: '12px', padding: '12px 16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ color: '#94a3b8', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Net Profit Margin</span>
+                <div style={{ padding: '5px', background: 'rgba(245, 158, 11, 0.12)', borderRadius: '6px', color: '#fbbf24' }}>
+                  <Database size={14} />
+                </div>
+              </div>
+              <div style={{ fontSize: '22px', fontWeight: '800', marginTop: '6px', color: netProfit >= 0 ? '#fbbf24' : '#f87171' }}>
+                ₹{formatIndianCurrency(netProfit)}
+              </div>
+              <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
+                {netProfit >= 0 ? '🟢 Surplus Profit Margin' : '🔴 Deficit / Higher Expenses'}
+              </div>
             </div>
           </div>
-          <div style={{ fontSize: '20px', fontWeight: '800', marginTop: '6px', color: '#f8fafc' }}>
-            ₹{formatIndianCurrency(totalPurchaseAmount)}
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px', fontSize: '11px', color: '#f87171' }}>
-            <ArrowDownRight size={12} /> {filteredPurchases.length} raw material & supply orders
+
+          {/* Granular Breakdown Section (Payment Method vs Category) */}
+          <div style={{
+            background: 'rgba(15, 23, 42, 0.5)',
+            border: '1px solid rgba(255, 255, 255, 0.06)',
+            borderRadius: '10px',
+            padding: '12px 14px'
+          }}>
+            {metricBreakdownTab === 'payment' ? (
+              /* PAYMENT METHOD WISE BREAKDOWN */
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+                {/* Sales Payment Breakdown */}
+                <div>
+                  <span style={{ fontSize: '11px', fontWeight: '700', color: '#4ade80', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '8px' }}>
+                    <TrendingUp size={12} /> Sales Revenue by Payment Method
+                  </span>
+                  {salesByPaymentMethod.length === 0 ? (
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>No sales records in filter.</span>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      {salesByPaymentMethod.map(([method, data]) => {
+                        const pct = totalSalesAmount > 0 ? Math.round((data.total / totalSalesAmount) * 100) : 0;
+                        return (
+                          <div key={method} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '6px', fontSize: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{ fontWeight: '600', color: '#cbd5e1' }}>{method}</span>
+                              <span style={{ fontSize: '10px', color: '#64748b' }}>({data.count})</span>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <span style={{ fontWeight: '700', color: '#4ade80' }}>₹{formatIndianCurrency(data.total)}</span>
+                              <span style={{ fontSize: '10px', color: '#94a3b8', marginLeft: '6px' }}>{pct}%</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Purchases Payment Breakdown */}
+                <div>
+                  <span style={{ fontSize: '11px', fontWeight: '700', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '8px' }}>
+                    <ShoppingBag size={12} /> Purchases Expense by Payment Method
+                  </span>
+                  {purchasesByPaymentMethod.length === 0 ? (
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>No purchase records in filter.</span>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      {purchasesByPaymentMethod.map(([method, data]) => {
+                        const pct = totalPurchaseAmount > 0 ? Math.round((data.total / totalPurchaseAmount) * 100) : 0;
+                        return (
+                          <div key={method} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '6px', fontSize: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{ fontWeight: '600', color: '#cbd5e1' }}>{method}</span>
+                              <span style={{ fontSize: '10px', color: '#64748b' }}>({data.count})</span>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <span style={{ fontWeight: '700', color: '#f87171' }}>₹{formatIndianCurrency(data.total)}</span>
+                              <span style={{ fontSize: '10px', color: '#94a3b8', marginLeft: '6px' }}>{pct}%</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              /* CATEGORY WISE BREAKDOWN */
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+                {/* Sales Category Breakdown */}
+                <div>
+                  <span style={{ fontSize: '11px', fontWeight: '700', color: '#fbbf24', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '8px' }}>
+                    <TrendingUp size={12} /> Sales by Product Category
+                  </span>
+                  {salesByCategory.length === 0 ? (
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>No sales records in filter.</span>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      {salesByCategory.map(([cat, data]) => {
+                        const pct = totalSalesAmount > 0 ? Math.round((data.total / totalSalesAmount) * 100) : 0;
+                        return (
+                          <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '6px', fontSize: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{ fontWeight: '600', color: '#cbd5e1' }}>{cat}</span>
+                              <span style={{ fontSize: '10px', color: '#64748b' }}>({data.count})</span>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <span style={{ fontWeight: '700', color: '#fbbf24' }}>₹{formatIndianCurrency(data.total)}</span>
+                              <span style={{ fontSize: '10px', color: '#94a3b8', marginLeft: '6px' }}>{pct}%</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {/* Purchases Category Breakdown */}
+                <div>
+                  <span style={{ fontSize: '11px', fontWeight: '700', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '8px' }}>
+                    <ShoppingBag size={12} /> Purchases by Item Category
+                  </span>
+                  {purchasesByCategory.length === 0 ? (
+                    <span style={{ fontSize: '11px', color: '#64748b' }}>No purchase records in filter.</span>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                      {purchasesByCategory.map(([cat, data]) => {
+                        const pct = totalPurchaseAmount > 0 ? Math.round((data.total / totalPurchaseAmount) * 100) : 0;
+                        return (
+                          <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '6px', fontSize: '12px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{ fontWeight: '600', color: '#cbd5e1' }}>{cat}</span>
+                              <span style={{ fontSize: '10px', color: '#64748b' }}>({data.count})</span>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                              <span style={{ fontWeight: '700', color: '#f87171' }}>₹{formatIndianCurrency(data.total)}</span>
+                              <span style={{ fontSize: '10px', color: '#94a3b8', marginLeft: '6px' }}>{pct}%</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
-
-        <div style={{ background: '#111827', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', padding: '12px 16px', boxShadow: '0 4px 16px rgba(0,0,0,0.3)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ color: '#94a3b8', fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Net Margin / Profit</span>
-            <div style={{ padding: '5px', background: 'rgba(245, 158, 11, 0.12)', borderRadius: '6px', color: '#fbbf24' }}>
-              <Database size={14} />
-            </div>
-          </div>
-          <div style={{ fontSize: '20px', fontWeight: '800', marginTop: '6px', color: netProfit >= 0 ? '#fbbf24' : '#f87171' }}>
-            ₹{formatIndianCurrency(netProfit)}
-          </div>
-          <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
-            Sales revenue minus purchase costs
-          </div>
-        </div>
-
-      </div>
+      )}
 
       {/* Always-Active Quick Data Entry Bar */}
       <div style={{
