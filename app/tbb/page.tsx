@@ -21,7 +21,12 @@ import {
   AlertTriangle,
   RotateCcw,
   Info,
-  X
+  X,
+  Filter,
+  SlidersHorizontal,
+  ChevronDown,
+  Check,
+  Sparkles
 } from 'lucide-react';
 
 const INITIAL_SALES: SaleEntry[] = [
@@ -131,6 +136,13 @@ export default function AdminPage() {
   const [filterEndDate, setFilterEndDate] = useState(currentMonthInit.endDate);
   const [selectedMonthKey, setSelectedMonthKey] = useState<string>(currentMonthInit.monthKey);
   const [ledgerFilter, setLedgerFilter] = useState<'all' | 'sales' | 'purchases' | 'trash'>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [selectedSupplier, setSelectedSupplier] = useState<string>('all');
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>('all');
+  const [selectedPaymentStatus, setSelectedPaymentStatus] = useState<string>('all');
+  const [minAmount, setMinAmount] = useState<string>('');
+  const [maxAmount, setMaxAmount] = useState<string>('');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
 
@@ -564,22 +576,81 @@ export default function AdminPage() {
   };
 
 
+  // Extract unique available values dynamically from dataset (Only available data!)
+  const availableCategories = React.useMemo(() => {
+    const set = new Set<string>();
+    if (ledgerFilter === 'all' || ledgerFilter === 'sales') {
+      sales.forEach(s => s.category && set.add(s.category.trim()));
+    }
+    if (ledgerFilter === 'all' || ledgerFilter === 'purchases') {
+      purchases.forEach(p => p.category && set.add(p.category.trim()));
+    }
+    return Array.from(set).filter(Boolean).sort();
+  }, [sales, purchases, ledgerFilter]);
+
+  const availableSuppliers = React.useMemo(() => {
+    const set = new Set<string>();
+    purchases.forEach(p => p.supplier && set.add(p.supplier.trim()));
+    return Array.from(set).filter(Boolean).sort();
+  }, [purchases]);
+
+  const availablePaymentMethods = React.useMemo(() => {
+    const set = new Set<string>();
+    if (ledgerFilter === 'all' || ledgerFilter === 'sales') {
+      sales.forEach(s => s.payment_method && set.add(s.payment_method.trim()));
+    }
+    if (ledgerFilter === 'all' || ledgerFilter === 'purchases') {
+      purchases.forEach(p => {
+        const parsed = parsePurchaseNotes(p.notes);
+        const m = p.payment_method || parsed.payment_method;
+        if (m) set.add(m.trim());
+      });
+    }
+    return Array.from(set).filter(Boolean).sort();
+  }, [sales, purchases, ledgerFilter]);
+
+  const availablePaymentStatuses = React.useMemo(() => {
+    const set = new Set<string>();
+    purchases.forEach(p => p.payment_status && set.add(p.payment_status.trim()));
+    return Array.from(set).filter(Boolean).sort();
+  }, [purchases]);
+
   const filteredSales = sales.filter((s: SaleEntry) => {
-    const matchesSearch = s.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = !searchTerm || s.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       s.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.payment_method.toLowerCase().includes(searchTerm.toLowerCase());
+      s.payment_method.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (s.notes && s.notes.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStart = !filterStartDate || s.date >= filterStartDate;
     const matchesEnd = !filterEndDate || s.date <= filterEndDate;
-    return matchesSearch && matchesStart && matchesEnd;
+    const matchesCategory = selectedCategory === 'all' || s.category.toLowerCase() === selectedCategory.toLowerCase();
+    const matchesPaymentMethod = selectedPaymentMethod === 'all' || s.payment_method.toLowerCase() === selectedPaymentMethod.toLowerCase();
+    const matchesMinAmount = !minAmount || s.total_amount >= Number(minAmount);
+    const matchesMaxAmount = !maxAmount || s.total_amount <= Number(maxAmount);
+
+    return matchesSearch && matchesStart && matchesEnd && matchesCategory && matchesPaymentMethod && matchesMinAmount && matchesMaxAmount;
   });
 
   const filteredPurchases = purchases.filter((p: PurchaseEntry) => {
-    const matchesSearch = p.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const parsed = parsePurchaseNotes(p.notes);
+    const pMethod = (p.payment_method || parsed.payment_method || 'Cash').toLowerCase();
+    const pStatus = (p.payment_status || 'Paid').toLowerCase();
+
+    const matchesSearch = !searchTerm || p.item_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.supplier.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.category.toLowerCase().includes(searchTerm.toLowerCase());
+      p.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      p.payment_status.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.notes && p.notes.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (p.bill_no && p.bill_no.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesStart = !filterStartDate || p.date >= filterStartDate;
     const matchesEnd = !filterEndDate || p.date <= filterEndDate;
-    return matchesSearch && matchesStart && matchesEnd;
+    const matchesCategory = selectedCategory === 'all' || (p.category && p.category.toLowerCase() === selectedCategory.toLowerCase());
+    const matchesSupplier = selectedSupplier === 'all' || (p.supplier && p.supplier.toLowerCase() === selectedSupplier.toLowerCase());
+    const matchesPaymentMethod = selectedPaymentMethod === 'all' || pMethod === selectedPaymentMethod.toLowerCase();
+    const matchesPaymentStatus = selectedPaymentStatus === 'all' || pStatus === selectedPaymentStatus.toLowerCase();
+    const matchesMinAmount = !minAmount || p.total_amount >= Number(minAmount);
+    const matchesMaxAmount = !maxAmount || p.total_amount <= Number(maxAmount);
+
+    return matchesSearch && matchesStart && matchesEnd && matchesCategory && matchesSupplier && matchesPaymentMethod && matchesPaymentStatus && matchesMinAmount && matchesMaxAmount;
   });
 
   // Unified combined items type
@@ -650,23 +721,59 @@ export default function AdminPage() {
     if (filterStartDate && item.date < filterStartDate) return false;
     if (filterEndDate && item.date > filterEndDate) return false;
 
-    // 3. Search term filter
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
+    // 3. Amount Range Filter
+    const totalAmt = Number(item.data.total_amount) || 0;
+    if (minAmount && totalAmt < Number(minAmount)) return false;
+    if (maxAmount && totalAmt > Number(maxAmount)) return false;
+
+    // 4. Category Filter
+    if (selectedCategory !== 'all') {
+      const cat = (item.data.category || '').toLowerCase();
+      if (cat !== selectedCategory.toLowerCase()) return false;
+    }
 
     if (item.type === 'sale') {
       const s = item.data;
-      return s.item_name.toLowerCase().includes(term) ||
-        s.category.toLowerCase().includes(term) ||
-        s.payment_method.toLowerCase().includes(term) ||
-        (s.notes && s.notes.toLowerCase().includes(term));
+      // If purchase-only supplier filter is active, sale doesn't match
+      if (selectedSupplier !== 'all') return false;
+      // If purchase-only status filter is active, sale doesn't match
+      if (selectedPaymentStatus !== 'all') return false;
+      // Payment Method
+      if (selectedPaymentMethod !== 'all' && s.payment_method.toLowerCase() !== selectedPaymentMethod.toLowerCase()) return false;
+
+      // Search term filter
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        return s.item_name.toLowerCase().includes(term) ||
+          s.category.toLowerCase().includes(term) ||
+          s.payment_method.toLowerCase().includes(term) ||
+          (s.notes && s.notes.toLowerCase().includes(term));
+      }
+      return true;
     } else {
       const p = item.data;
-      return p.item_name.toLowerCase().includes(term) ||
-        p.supplier.toLowerCase().includes(term) ||
-        p.category.toLowerCase().includes(term) ||
-        p.payment_status.toLowerCase().includes(term) ||
-        (p.notes && p.notes.toLowerCase().includes(term));
+      const parsed = parsePurchaseNotes(p.notes);
+      const pMethod = (p.payment_method || parsed.payment_method || 'Cash').toLowerCase();
+      const pStatus = (p.payment_status || 'Paid').toLowerCase();
+
+      // Supplier Filter
+      if (selectedSupplier !== 'all' && (!p.supplier || p.supplier.toLowerCase() !== selectedSupplier.toLowerCase())) return false;
+      // Payment Method Filter
+      if (selectedPaymentMethod !== 'all' && pMethod !== selectedPaymentMethod.toLowerCase()) return false;
+      // Payment Status Filter
+      if (selectedPaymentStatus !== 'all' && pStatus !== selectedPaymentStatus.toLowerCase()) return false;
+
+      // Search term filter
+      if (searchTerm) {
+        const term = searchTerm.toLowerCase();
+        return p.item_name.toLowerCase().includes(term) ||
+          p.supplier.toLowerCase().includes(term) ||
+          p.category.toLowerCase().includes(term) ||
+          p.payment_status.toLowerCase().includes(term) ||
+          (p.notes && p.notes.toLowerCase().includes(term)) ||
+          (p.bill_no && p.bill_no.toLowerCase().includes(term));
+      }
+      return true;
     }
   });
 
@@ -677,7 +784,7 @@ export default function AdminPage() {
   // Reset current page when filters or pageSize change
   useEffect(() => {
     setCurrentPage(1);
-  }, [ledgerFilter, searchTerm, filterStartDate, filterEndDate, pageSize]);
+  }, [ledgerFilter, searchTerm, filterStartDate, filterEndDate, selectedCategory, selectedSupplier, selectedPaymentMethod, selectedPaymentStatus, minAmount, maxAmount, pageSize]);
 
   const totalSalesAmount = filteredSales.reduce((acc: number, curr: SaleEntry) => acc + curr.total_amount, 0);
   const totalPurchaseAmount = filteredPurchases.reduce((acc: number, curr: PurchaseEntry) => acc + curr.total_amount, 0);
@@ -702,6 +809,38 @@ export default function AdminPage() {
         return { key, label, year: parseInt(yearStr, 10), monthIndex };
       });
   }, [sales, purchases]);
+
+  // Active filters counter
+  const activeFilterCount = React.useMemo(() => {
+    let count = 0;
+    if (searchTerm) count++;
+    if (selectedMonthKey !== 'all') count++;
+    if (selectedCategory !== 'all') count++;
+    if (selectedSupplier !== 'all') count++;
+    if (selectedPaymentMethod !== 'all') count++;
+    if (selectedPaymentStatus !== 'all') count++;
+    if (minAmount || maxAmount) count++;
+    return count;
+  }, [searchTerm, selectedMonthKey, selectedCategory, selectedSupplier, selectedPaymentMethod, selectedPaymentStatus, minAmount, maxAmount]);
+
+  // Reset all filters function
+  const handleResetFilters = () => {
+    const def = getCurrentMonthRange();
+    setSearchTerm('');
+    setFilterStartDate(def.startDate);
+    setFilterEndDate(def.endDate);
+    setSelectedMonthKey(def.monthKey);
+    setSelectedCategory('all');
+    setSelectedSupplier('all');
+    setSelectedPaymentMethod('all');
+    setSelectedPaymentStatus('all');
+    setMinAmount('');
+    setMaxAmount('');
+    setLedgerFilter('all');
+    setPageSize(30);
+    setSortField('createdTimestamp');
+    setSortOrder('desc');
+  };
 
   // Handler when user selects a specific month from the Month filter dropdown
   const handleMonthFilterChange = (monthKey: string) => {
@@ -1330,107 +1469,438 @@ export default function AdminPage() {
           </button>
         </div>
 
-        {/* Filters and Date Pickers */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '10px', marginBottom: '14px', background: 'rgba(255,255,255,0.02)', padding: '10px 12px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.05)' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '11px', fontWeight: '600', color: '#94a3b8' }}>Search Keyword</label>
-            <div style={{ position: 'relative' }}>
+        {/* Modernized Comprehensive & Compact Filter Control Bar */}
+        <div style={{
+          background: 'linear-gradient(145deg, rgba(15, 23, 42, 0.8) 0%, rgba(30, 41, 59, 0.6) 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          borderRadius: '12px',
+          padding: '12px 14px',
+          marginBottom: '14px',
+          boxShadow: '0 4px 20px -2px rgba(0, 0, 0, 0.4)',
+          backdropFilter: 'blur(12px)'
+        }}>
+          {/* Top Primary Filter Row */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            gap: '8px',
+            alignItems: 'center'
+          }}>
+            {/* Search Input */}
+            <div style={{ position: 'relative', minWidth: '160px', gridColumn: 'span 2' }}>
+              <Search size={13} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: searchTerm ? '#60a5fa' : '#64748b' }} />
               <input
                 type="text"
-                placeholder="Search by item, category, supplier..."
+                placeholder="Search item, bill#, party, notes..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ width: '100%', padding: '6px 10px 6px 30px', background: '#1f2937', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontSize: '12px', outline: 'none' }}
+                style={{
+                  width: '100%',
+                  padding: '6px 26px 6px 28px',
+                  background: 'rgba(15, 23, 42, 0.9)',
+                  border: searchTerm ? '1px solid rgba(96, 165, 250, 0.5)' : '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '8px',
+                  color: '#f8fafc',
+                  fontSize: '12px',
+                  outline: 'none',
+                  height: '32px'
+                }}
               />
-              <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#64748b' }} />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: 0, display: 'flex' }}>
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+
+            {/* Quick Month Dropdown */}
+            <div style={{ minWidth: '130px' }}>
+              <select
+                value={selectedMonthKey}
+                onChange={(e) => handleMonthFilterChange(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '5px 8px',
+                  background: selectedMonthKey !== 'all' ? 'rgba(245, 158, 11, 0.15)' : 'rgba(15, 23, 42, 0.9)',
+                  border: selectedMonthKey !== 'all' ? '1px solid rgba(245, 158, 11, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '8px',
+                  color: selectedMonthKey !== 'all' ? '#fbbf24' : '#f8fafc',
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  height: '32px',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}>
+                <option value="all">🗓️ All Months</option>
+                {availableMonths.map(m => (
+                  <option key={m.key} value={m.key}>
+                    📅 {m.label}
+                  </option>
+                ))}
+                {selectedMonthKey === 'custom' && (
+                  <option value="custom">✏️ Custom Range</option>
+                )}
+              </select>
+            </div>
+
+            {/* From Date */}
+            <div style={{ minWidth: '125px' }}>
+              <CustomDatePicker
+                value={filterStartDate}
+                onChange={(e: any) => {
+                  const newStart = e.target.value;
+                  setFilterStartDate(newStart);
+                  setSelectedMonthKey('custom');
+                  if (filterEndDate && newStart > filterEndDate) {
+                    setFilterEndDate(newStart);
+                  }
+                }}
+                placeholder="From Date"
+                style={{ minHeight: '32px', padding: '4px 6px', fontSize: '11px', background: 'rgba(15, 23, 42, 0.9)' }}
+              />
+            </div>
+
+            {/* To Date */}
+            <div style={{ minWidth: '125px' }}>
+              <CustomDatePicker
+                value={filterEndDate}
+                min={filterStartDate}
+                onChange={(e: any) => {
+                  const newEnd = e.target.value;
+                  setSelectedMonthKey('custom');
+                  if (!filterStartDate || newEnd >= filterStartDate) {
+                    setFilterEndDate(newEnd);
+                  } else {
+                    setFilterEndDate(filterStartDate);
+                  }
+                }}
+                placeholder="To Date"
+                style={{ minHeight: '32px', padding: '4px 6px', fontSize: '11px', background: 'rgba(15, 23, 42, 0.9)' }}
+              />
+            </div>
+
+            {/* Entries Per Page */}
+            <div style={{ minWidth: '95px' }}>
+              <select
+                value={pageSize}
+                onChange={(e) => setPageSize(Number(e.target.value))}
+                style={{
+                  width: '100%',
+                  padding: '5px 8px',
+                  background: 'rgba(15, 23, 42, 0.9)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '8px',
+                  color: '#94a3b8',
+                  fontSize: '11px',
+                  fontWeight: '600',
+                  height: '32px',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}>
+                <option value={30}>30 / page</option>
+                <option value={50}>50 / page</option>
+                <option value={100}>100 / page</option>
+                <option value={500}>All / 500</option>
+              </select>
+            </div>
+
+            {/* Toggle More Filters Button */}
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                type="button"
+                onClick={() => setShowAdvancedFilters(prev => !prev)}
+                style={{
+                  flex: 1,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '5px',
+                  padding: '6px 10px',
+                  height: '32px',
+                  background: showAdvancedFilters || activeFilterCount > 0 ? 'rgba(99, 102, 241, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+                  border: showAdvancedFilters || activeFilterCount > 0 ? '1px solid rgba(99, 102, 241, 0.4)' : '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '8px',
+                  color: showAdvancedFilters || activeFilterCount > 0 ? '#a5b4fc' : '#cbd5e1',
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.15s ease'
+                }}>
+                <SlidersHorizontal size={12} />
+                <span>Filters</span>
+                {activeFilterCount > 0 && (
+                  <span style={{
+                    background: '#6366f1',
+                    color: '#fff',
+                    borderRadius: '10px',
+                    padding: '1px 5px',
+                    fontSize: '9px',
+                    fontWeight: '800'
+                  }}>
+                    {activeFilterCount}
+                  </span>
+                )}
+                <ChevronDown size={11} style={{ transform: showAdvancedFilters ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
+              </button>
+
+              {/* Reset Filter Button */}
+              {activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  title="Reset all filters"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '6px 8px',
+                    height: '32px',
+                    background: 'rgba(239, 68, 68, 0.15)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    borderRadius: '8px',
+                    color: '#f87171',
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}>
+                  <RotateCcw size={11} />
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Month Selector Filter */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '11px', fontWeight: '700', color: '#fbbf24' }}>Select Month</label>
-            <select
-              value={selectedMonthKey}
-              onChange={(e) => handleMonthFilterChange(e.target.value)}
-              style={{ width: '100%', padding: '6px 10px', background: '#1f2937', border: '1px solid rgba(245, 158, 11, 0.4)', borderRadius: '8px', color: '#fbbf24', fontSize: '12px', fontWeight: '700', height: '32px', outline: 'none' }}>
-              <option value="all">All Months (Show All Data)</option>
-              {availableMonths.map(m => (
-                <option key={m.key} value={m.key}>
-                  {m.label}
-                </option>
-              ))}
-              {selectedMonthKey === 'custom' && (
-                <option value="custom">Custom Range</option>
+          {/* Advanced / Specific Field Filters Row (Dynamic, Collapsible) */}
+          {showAdvancedFilters && (
+            <div style={{
+              marginTop: '10px',
+              paddingTop: '10px',
+              borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+              gap: '8px',
+              alignItems: 'center'
+            }}>
+              {/* Category Filter (Dynamic from real data) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Category</span>
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '4px 8px',
+                    background: selectedCategory !== 'all' ? 'rgba(59, 130, 246, 0.2)' : '#1e293b',
+                    border: selectedCategory !== 'all' ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '6px',
+                    color: selectedCategory !== 'all' ? '#93c5fd' : '#f8fafc',
+                    fontSize: '11px',
+                    height: '30px',
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}>
+                  <option value="all">All Categories ({availableCategories.length})</option>
+                  {availableCategories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Party / Supplier Filter (Purchase only or unified, dynamic) */}
+              {ledgerFilter !== 'sales' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '700', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Party / Supplier</span>
+                  <select
+                    value={selectedSupplier}
+                    onChange={(e) => setSelectedSupplier(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '4px 8px',
+                      background: selectedSupplier !== 'all' ? 'rgba(99, 102, 241, 0.2)' : '#1e293b',
+                      border: selectedSupplier !== 'all' ? '1px solid rgba(99, 102, 241, 0.5)' : '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '6px',
+                      color: selectedSupplier !== 'all' ? '#a5b4fc' : '#f8fafc',
+                      fontSize: '11px',
+                      height: '30px',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}>
+                    <option value="all">All Suppliers ({availableSuppliers.length})</option>
+                    {availableSuppliers.map(sup => (
+                      <option key={sup} value={sup}>{sup}</option>
+                    ))}
+                  </select>
+                </div>
               )}
-            </select>
-          </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '11px', fontWeight: '600', color: '#94a3b8' }}>From Date</label>
-            <CustomDatePicker
-              value={filterStartDate}
-              onChange={(e: any) => {
-                const newStart = e.target.value;
-                setFilterStartDate(newStart);
-                setSelectedMonthKey('custom');
-                if (filterEndDate && newStart > filterEndDate) {
-                  setFilterEndDate(newStart);
-                }
-              }}
-              placeholder="Start Date..."
-              style={{ minHeight: '32px', padding: '4px 8px', fontSize: '12px' }}
-            />
-          </div>
+              {/* Payment Method Filter (Dynamic from dataset) */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Payment Method</span>
+                <select
+                  value={selectedPaymentMethod}
+                  onChange={(e) => setSelectedPaymentMethod(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '4px 8px',
+                    background: selectedPaymentMethod !== 'all' ? 'rgba(245, 158, 11, 0.2)' : '#1e293b',
+                    border: selectedPaymentMethod !== 'all' ? '1px solid rgba(245, 158, 11, 0.5)' : '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '6px',
+                    color: selectedPaymentMethod !== 'all' ? '#fde047' : '#f8fafc',
+                    fontSize: '11px',
+                    height: '30px',
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}>
+                  <option value="all">All Methods ({availablePaymentMethods.length})</option>
+                  {availablePaymentMethods.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '11px', fontWeight: '600', color: '#94a3b8' }}>To Date</label>
-            <CustomDatePicker
-              value={filterEndDate}
-              min={filterStartDate}
-              onChange={(e: any) => {
-                const newEnd = e.target.value;
-                setSelectedMonthKey('custom');
-                if (!filterStartDate || newEnd >= filterStartDate) {
-                  setFilterEndDate(newEnd);
-                } else {
-                  setFilterEndDate(filterStartDate);
-                }
-              }}
-              placeholder="End Date..."
-              style={{ minHeight: '32px', padding: '4px 8px', fontSize: '12px' }}
-            />
-          </div>
+              {/* Status Filter (Purchases status: Paid / Pending / Partial) */}
+              {ledgerFilter !== 'sales' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '700', color: '#818cf8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Status</span>
+                  <select
+                    value={selectedPaymentStatus}
+                    onChange={(e) => setSelectedPaymentStatus(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '4px 8px',
+                      background: selectedPaymentStatus !== 'all' ? 'rgba(34, 197, 94, 0.2)' : '#1e293b',
+                      border: selectedPaymentStatus !== 'all' ? '1px solid rgba(34, 197, 94, 0.5)' : '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '6px',
+                      color: selectedPaymentStatus !== 'all' ? '#86efac' : '#f8fafc',
+                      fontSize: '11px',
+                      height: '30px',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}>
+                    <option value="all">All Statuses ({availablePaymentStatuses.length})</option>
+                    {availablePaymentStatuses.map(st => (
+                      <option key={st} value={st}>{st}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-            <label style={{ fontSize: '11px', fontWeight: '600', color: '#94a3b8' }}>Entries Per Page</label>
-            <select
-              value={pageSize}
-              onChange={(e) => setPageSize(Number(e.target.value))}
-              style={{ width: '100%', padding: '6px 8px', background: '#1f2937', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff', fontSize: '12px', height: '32px' }}>
-              <option value={30}>30 per page</option>
-              <option value={40}>40 per page</option>
-              <option value={50}>50 per page</option>
-              <option value={100}>100 per page</option>
-            </select>
-          </div>
+              {/* Min Amount Filter */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Min ₹</span>
+                <input
+                  type="number"
+                  placeholder="Min Amount"
+                  value={minAmount}
+                  onChange={(e) => setMinAmount(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '4px 8px',
+                    background: minAmount ? 'rgba(59, 130, 246, 0.2)' : '#1e293b',
+                    border: minAmount ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '6px',
+                    color: '#f8fafc',
+                    fontSize: '11px',
+                    height: '30px',
+                    outline: 'none'
+                  }}
+                />
+              </div>
 
-          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-            <button
-              onClick={() => {
-                const def = getCurrentMonthRange();
-                setSearchTerm('');
-                setFilterStartDate(def.startDate);
-                setFilterEndDate(def.endDate);
-                setSelectedMonthKey(def.monthKey);
-                setLedgerFilter('all');
-                setPageSize(30);
-                setSortField('createdTimestamp');
-                setSortOrder('desc');
-              }}
-              style={{ width: '100%', padding: '6px 8px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#94a3b8', fontSize: '12px', fontWeight: '600', cursor: 'pointer', height: '32px', transition: 'all 0.15s' }}>
-              Reset (Current Month)
-            </button>
-          </div>
+              {/* Max Amount Filter */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Max ₹</span>
+                <input
+                  type="number"
+                  placeholder="Max Amount"
+                  value={maxAmount}
+                  onChange={(e) => setMaxAmount(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '4px 8px',
+                    background: maxAmount ? 'rgba(59, 130, 246, 0.2)' : '#1e293b',
+                    border: maxAmount ? '1px solid rgba(59, 130, 246, 0.5)' : '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '6px',
+                    color: '#f8fafc',
+                    fontSize: '11px',
+                    height: '30px',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Active Filter Chips Bar (Shows only when active filters exist) */}
+          {activeFilterCount > 0 && (
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '6px',
+              alignItems: 'center',
+              marginTop: '10px',
+              paddingTop: '8px',
+              borderTop: '1px dashed rgba(255, 255, 255, 0.08)',
+              fontSize: '11px'
+            }}>
+              <span style={{ color: '#64748b', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <Filter size={10} /> Active Filters ({activeFilterCount}):
+              </span>
+
+              {searchTerm && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.3)', color: '#93c5fd', padding: '2px 8px', borderRadius: '12px' }}>
+                  Search: &quot;{searchTerm}&quot;
+                  <X size={10} style={{ cursor: 'pointer' }} onClick={() => setSearchTerm('')} />
+                </span>
+              )}
+
+              {selectedCategory !== 'all' && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(245, 158, 11, 0.15)', border: '1px solid rgba(245, 158, 11, 0.3)', color: '#fbbf24', padding: '2px 8px', borderRadius: '12px' }}>
+                  Category: {selectedCategory}
+                  <X size={10} style={{ cursor: 'pointer' }} onClick={() => setSelectedCategory('all')} />
+                </span>
+              )}
+
+              {selectedSupplier !== 'all' && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(99, 102, 241, 0.15)', border: '1px solid rgba(99, 102, 241, 0.3)', color: '#a5b4fc', padding: '2px 8px', borderRadius: '12px' }}>
+                  Supplier: {selectedSupplier}
+                  <X size={10} style={{ cursor: 'pointer' }} onClick={() => setSelectedSupplier('all')} />
+                </span>
+              )}
+
+              {selectedPaymentMethod !== 'all' && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(234, 179, 8, 0.15)', border: '1px solid rgba(234, 179, 8, 0.3)', color: '#fef08a', padding: '2px 8px', borderRadius: '12px' }}>
+                  Method: {selectedPaymentMethod}
+                  <X size={10} style={{ cursor: 'pointer' }} onClick={() => setSelectedPaymentMethod('all')} />
+                </span>
+              )}
+
+              {selectedPaymentStatus !== 'all' && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(34, 197, 94, 0.15)', border: '1px solid rgba(34, 197, 94, 0.3)', color: '#86efac', padding: '2px 8px', borderRadius: '12px' }}>
+                  Status: {selectedPaymentStatus}
+                  <X size={10} style={{ cursor: 'pointer' }} onClick={() => setSelectedPaymentStatus('all')} />
+                </span>
+              )}
+
+              {(minAmount || maxAmount) && (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(168, 85, 247, 0.15)', border: '1px solid rgba(168, 85, 247, 0.3)', color: '#d8b4fe', padding: '2px 8px', borderRadius: '12px' }}>
+                  ₹: {minAmount || '0'} - {maxAmount || '∞'}
+                  <X size={10} style={{ cursor: 'pointer' }} onClick={() => { setMinAmount(''); setMaxAmount(''); }} />
+                </span>
+              )}
+
+              <button
+                type="button"
+                onClick={handleResetFilters}
+                style={{ background: 'none', border: 'none', color: '#f87171', fontSize: '10px', fontWeight: '700', cursor: 'pointer', textDecoration: 'underline', padding: '0 4px' }}>
+                Clear All
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Unified Table View or Trash View */}
