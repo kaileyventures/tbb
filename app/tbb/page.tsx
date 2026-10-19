@@ -152,7 +152,7 @@ export default function AdminPage() {
   const [showSummaryMetrics, setShowSummaryMetrics] = useState<boolean>(false); // Default hidden as requested
   const [metricBreakdownTab, setMetricBreakdownTab] = useState<'payment' | 'category'>('payment');
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(30);
+  const [pageSize, setPageSize] = useState(10);
 
   // Column Sorting State
   type SortField = 'type' | 'date' | 'item_name' | 'category' | 'quantity' | 'unit_price' | 'total_amount' | 'details' | 'createdTimestamp';
@@ -1959,10 +1959,12 @@ export default function AdminPage() {
                   outline: 'none',
                   cursor: 'pointer'
                 }}>
+                <option value={10}>10 / page</option>
                 <option value={30}>30 / page</option>
                 <option value={50}>50 / page</option>
                 <option value={100}>100 / page</option>
-                <option value={500}>All / 500</option>
+                <option value={250}>250 / page</option>
+                <option value={500}>500 / page</option>
               </select>
             </div>
 
