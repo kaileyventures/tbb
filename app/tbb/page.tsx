@@ -307,6 +307,21 @@ export default function AdminPage() {
     return { bill_no: '', payment_method: 'Cash', desc: notesStr.trim() };
   };
 
+  // Standardize payment method names to eliminate case-sensitivity mismatches (e.g., "card" vs "Card")
+  const normalizePaymentMethod = (method?: string): string => {
+    if (!method || !method.trim()) return 'Cash';
+    const trimmed = method.trim();
+    const lower = trimmed.toLowerCase();
+    if (lower === 'cash') return 'Cash';
+    if (lower === 'card') return 'Card';
+    if (lower === 'gpay' || lower === 'upi' || lower === 'gpay / upi' || lower === 'gpay/upi') return 'GPay / UPI';
+    if (lower === 'bank transfer' || lower === 'bank') return 'Bank Transfer';
+    if (lower === 'cheque') return 'Cheque';
+    if (lower === 'current sale') return 'Current Sale';
+    // Fallback: Capitalize first letter of each word
+    return trimmed.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+  };
+
   // Form Fields - Purchase
   const [purchaseForm, setPurchaseForm] = useState({
     date: new Date().toISOString().slice(0, 10),
@@ -605,13 +620,13 @@ export default function AdminPage() {
   const availablePaymentMethods = React.useMemo(() => {
     const set = new Set<string>();
     if (ledgerFilter === 'all' || ledgerFilter === 'sales') {
-      sales.forEach(s => s.payment_method && set.add(s.payment_method.trim()));
+      sales.forEach(s => s.payment_method && set.add(normalizePaymentMethod(s.payment_method)));
     }
     if (ledgerFilter === 'all' || ledgerFilter === 'purchases') {
       purchases.forEach(p => {
         const parsed = parsePurchaseNotes(p.notes);
         const m = p.payment_method || parsed.payment_method;
-        if (m) set.add(m.trim());
+        if (m) set.add(normalizePaymentMethod(m));
       });
     }
     return Array.from(set).filter(Boolean).sort();
@@ -802,7 +817,7 @@ export default function AdminPage() {
   const salesByPaymentMethod = React.useMemo(() => {
     const map: Record<string, { count: number; total: number }> = {};
     filteredSales.forEach(s => {
-      const method = s.payment_method || 'Other';
+      const method = normalizePaymentMethod(s.payment_method);
       if (!map[method]) map[method] = { count: 0, total: 0 };
       map[method].count += 1;
       map[method].total += Number(s.total_amount) || 0;
@@ -814,7 +829,7 @@ export default function AdminPage() {
     const map: Record<string, { count: number; total: number }> = {};
     filteredPurchases.forEach(p => {
       const parsed = parsePurchaseNotes(p.notes);
-      const method = p.payment_method || parsed.payment_method || 'Cash';
+      const method = normalizePaymentMethod(p.payment_method || parsed.payment_method);
       if (!map[method]) map[method] = { count: 0, total: 0 };
       map[method].count += 1;
       map[method].total += Number(p.total_amount) || 0;
@@ -2401,7 +2416,7 @@ export default function AdminPage() {
                           <td style={{ padding: '8px 10px', fontWeight: '800', color: '#4ade80' }}>+₹{formatIndianCurrency(sale.total_amount)}</td>
                           <td style={{ padding: '8px 10px' }}>
                             <span style={{ padding: '2px 8px', background: 'rgba(255,255,255,0.06)', borderRadius: '4px', fontSize: '11px', color: '#cbd5e1' }}>
-                              {sale.payment_method}
+                              {normalizePaymentMethod(sale.payment_method)}
                             </span>
                             {sale.notes && <span style={{ display: 'block', fontSize: '10px', color: '#64748b', marginTop: '1px' }}>{sale.notes}</span>}
                           </td>
@@ -2430,7 +2445,7 @@ export default function AdminPage() {
                       const purchase = item.data;
                       const parsed = parsePurchaseNotes(purchase.notes);
                       const billNo = purchase.bill_no || parsed.bill_no;
-                      const paymentMethod = purchase.payment_method || parsed.payment_method || 'Cash';
+                      const paymentMethod = normalizePaymentMethod(purchase.payment_method || parsed.payment_method);
                       const desc = parsed.desc;
 
                       return (
