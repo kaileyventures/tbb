@@ -32,7 +32,11 @@ import {
   BarChart3,
   PieChart,
   CreditCard,
-  Layers
+  Layers,
+  Printer,
+  ShoppingCart,
+  Settings2,
+  Tag
 } from 'lucide-react';
 
 const INITIAL_SALES: SaleEntry[] = [
@@ -281,6 +285,23 @@ export default function AdminPage() {
     triggerToast(`🔥 Permanently erased "${itemName}" from Trash.`);
   };
 
+  // POS (Point of Sale) State
+  const [showPosModal, setShowPosModal] = useState<boolean>(false);
+  const [posDate, setPosDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [posCart, setPosCart] = useState<Array<{ name: string; category: string; price: number; qty: number }>>([]);
+  const [posSearchTerm, setPosSearchTerm] = useState<string>('');
+  const [posSelectedCategory, setPosSelectedCategory] = useState<string>('all');
+  const [isProcessingPos, setIsProcessingPos] = useState<boolean>(false);
+  const [lastPrintedBill, setLastPrintedBill] = useState<{ billNo: string; date: string; items: Array<{ name: string; price: number; qty: number }>; total: number } | null>(null);
+  const [posRightTab, setPosRightTab] = useState<'slip' | 'history'>('slip');
+  const [previewHistoryBill, setPreviewHistoryBill] = useState<{ billNo: string; date: string; items: Array<{ name: string; price: number; qty: number }>; total: number } | null>(null);
+
+  // POS Product & Price Register State (editable table)
+  const [showPriceRegisterModal, setShowPriceRegisterModal] = useState<boolean>(false);
+  const [customProducts, setCustomProducts] = useState<Array<{ name: string; category: string; price: number }>>([]);
+  const [newProductForm, setNewProductForm] = useState<{ name: string; category: string; price: string }>({ name: '', category: 'Cakes', price: '' });
+  const [registerSearchTerm, setRegisterSearchTerm] = useState<string>('');
+
   // Form Fields - Sale
   const [saleForm, setSaleForm] = useState({
     date: new Date().toISOString().slice(0, 10),
@@ -318,6 +339,7 @@ export default function AdminPage() {
     if (lower === 'bank transfer' || lower === 'bank') return 'Bank Transfer';
     if (lower === 'cheque') return 'Cheque';
     if (lower === 'current sale') return 'Current Sale';
+    if (lower === 'pos') return 'POS';
     // Fallback: Capitalize first letter of each word
     return trimmed.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
   };
@@ -597,6 +619,437 @@ export default function AdminPage() {
       setIsSavingQuickEntry(false);
     }
   };
+
+  // Load custom product register from localStorage
+  useEffect(() => {
+    try {
+      const savedProducts = localStorage.getItem('tbb_pos_custom_products');
+      if (savedProducts) {
+        setCustomProducts(JSON.parse(savedProducts));
+      }
+    } catch (e) {
+      console.error('Error loading custom products:', e);
+    }
+  }, []);
+
+  // Save custom product register to localStorage
+  const saveCustomProducts = (newProducts: Array<{ name: string; category: string; price: number }>) => {
+    setCustomProducts(newProducts);
+    try {
+      localStorage.setItem('tbb_pos_custom_products', JSON.stringify(newProducts));
+    } catch (e) {
+      console.error('Error saving custom products:', e);
+    }
+  };
+
+  // Add or Update product in register
+  const handleSaveProductRegister = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newProductForm.name.trim()) return;
+    const priceNum = Math.max(0, Number(newProductForm.price) || 0);
+    const existingIdx = customProducts.findIndex(p => p.name.toLowerCase() === newProductForm.name.trim().toLowerCase());
+    let updated: Array<{ name: string; category: string; price: number }>;
+    if (existingIdx >= 0) {
+      updated = customProducts.map((p, idx) => idx === existingIdx ? { ...p, category: newProductForm.category, price: priceNum } : p);
+      triggerToast(`✏️ Product "${newProductForm.name}" updated in Price Register!`);
+    } else {
+      updated = [...customProducts, { name: newProductForm.name.trim(), category: newProductForm.category, price: priceNum }];
+      triggerToast(`✅ Product "${newProductForm.name}" added to Price Register!`);
+    }
+    saveCustomProducts(updated);
+    setNewProductForm({ name: '', category: 'Cakes', price: '' });
+  };
+
+  // Delete product from register
+  const handleDeleteProductRegister = (name: string) => {
+    const updated = customProducts.filter(p => p.name !== name);
+    saveCustomProducts(updated);
+    triggerToast(`🗑️ Product "${name}" deleted from register.`);
+  };
+
+  // POS Catalog: derive unique items combining sales history, customProducts register, and bakery defaults
+  const posCatalog = React.useMemo(() => {
+    const itemMap = new Map<string, { name: string; category: string; price: number }>();
+    
+    // 1. First load default popular bakery items
+    const defaultBakery = [
+      { name: 'Chocolate Truffle Cake', category: 'Cakes', price: 550 },
+      { name: 'Red Velvet Cake', category: 'Cakes', price: 650 },
+      { name: 'Black Forest Cake', category: 'Cakes', price: 500 },
+      { name: 'Pineapple Cake', category: 'Cakes', price: 450 },
+      { name: 'Almond Croissant', category: 'Pastries', price: 120 },
+      { name: 'Butter Croissant', category: 'Pastries', price: 90 },
+      { name: 'Chocolate Mousse', category: 'Pastries', price: 150 },
+      { name: 'Red Velvet Cupcake Set', category: 'Cupcakes', price: 450 },
+      { name: 'Choco Chip Cupcake', category: 'Cupcakes', price: 80 },
+      { name: 'Blueberry Muffin', category: 'Pastries', price: 110 },
+      { name: 'Garlic Loaf Bread', category: 'Breads', price: 80 },
+      { name: 'Multi-Grain Bread', category: 'Breads', price: 70 },
+      { name: 'Paneer Puff', category: 'Snacks', price: 45 },
+      { name: 'Cheese Straws', category: 'Snacks', price: 130 },
+      { name: 'Cappuccino / Hot Coffee', category: 'Beverages', price: 120 },
+    ];
+    defaultBakery.forEach(item => itemMap.set(item.name, item));
+
+    // 2. Override/enrich with previous sales history
+    sales.forEach(s => {
+      if (s.item_name && s.item_name.trim()) {
+        const name = s.item_name.trim();
+        const price = Number(s.unit_price) || 0;
+        const existing = itemMap.get(name);
+        itemMap.set(name, {
+          name,
+          category: s.category || (existing ? existing.category : 'Bakery'),
+          price: price > 0 ? price : (existing ? existing.price : 100)
+        });
+      }
+    });
+
+    // 3. Override with User's Custom Product & Price Register (Highest Priority!)
+    customProducts.forEach(item => {
+      if (item.name && item.name.trim()) {
+        itemMap.set(item.name.trim(), {
+          name: item.name.trim(),
+          category: item.category || 'Bakery',
+          price: item.price
+        });
+      }
+    });
+
+    // 4. Calculate total quantity sold per product from the database (Sales history)
+    const salesVolumeMap = new Map<string, number>();
+    sales.forEach(s => {
+      if (s.item_name && s.item_name.trim()) {
+        const key = s.item_name.trim().toLowerCase();
+        const qty = Number(s.quantity) || 1;
+        salesVolumeMap.set(key, (salesVolumeMap.get(key) || 0) + qty);
+      }
+    });
+
+    // Sort products by sales volume descending (highest sales first!)
+    const allProducts = Array.from(itemMap.values()).map(p => ({
+      ...p,
+      salesCount: salesVolumeMap.get(p.name.toLowerCase()) || 0
+    }));
+
+    allProducts.sort((a, b) => {
+      if (b.salesCount !== a.salesCount) {
+        return b.salesCount - a.salesCount;
+      }
+      return a.name.localeCompare(b.name);
+    });
+
+    return allProducts;
+  }, [sales, customProducts]);
+
+  // Today's total sales & POS bill count (Count unique bills!)
+  const todayDateStr = new Date().toISOString().slice(0, 10);
+  const todaySalesStats = React.useMemo(() => {
+    const todaySales = sales.filter(s => s.date === posDate);
+    const total = todaySales.reduce((acc, s) => acc + (Number(s.total_amount) || 0), 0);
+    
+    // Collect unique POS bill numbers to avoid counting each line item as a separate bill
+    const uniqueBillSet = new Set<string>();
+    todaySales.forEach(s => {
+      const billMatch = (s.notes || '').match(/Bill #(POS-[^ (]+)/i);
+      if (billMatch) {
+        uniqueBillSet.add(billMatch[1]);
+      } else if ((s.payment_method || '').toUpperCase() === 'POS') {
+        uniqueBillSet.add(`SALE-${s.id}`);
+      }
+    });
+
+    return {
+      total,
+      count: todaySales.length,
+      posBills: uniqueBillSet.size
+    };
+  }, [sales, posDate]);
+
+  // Today's POS Bills History Grouping (for reprinting and viewing past bills)
+  const todayPosBillsList = React.useMemo(() => {
+    const billMap = new Map<string, { billNo: string; date: string; items: Array<{ name: string; price: number; qty: number }>; total: number; timestamp?: string }>();
+    
+    // Sort sales by id / date
+    const todaySales = sales.filter(s => s.date === posDate);
+    
+    todaySales.forEach(s => {
+      // Check if this sale is POS or has bill number
+      const billMatch = (s.notes || '').match(/Bill #(POS-[^ (]+)/i);
+      const isPos = (s.payment_method || '').toUpperCase() === 'POS' || Boolean(billMatch);
+      if (!isPos) return;
+
+      const billNo = billMatch ? billMatch[1] : `SALE-${s.id}`;
+      const item = {
+        name: s.item_name || 'Bakery Item',
+        price: Number(s.unit_price) || Number(s.total_amount) || 0,
+        qty: Number(s.quantity) || 1
+      };
+
+      if (!billMap.has(billNo)) {
+        billMap.set(billNo, {
+          billNo,
+          date: s.date,
+          items: [item],
+          total: Number(s.total_amount) || (item.price * item.qty)
+        });
+      } else {
+        const existing = billMap.get(billNo)!;
+        existing.items.push(item);
+        existing.total += Number(s.total_amount) || (item.price * item.qty);
+      }
+    });
+
+    return Array.from(billMap.values());
+  }, [sales, posDate]);
+
+  // Next POS Bill Number for current date (Strictly serial: 001, 002, 003...)
+  const nextPosBillNumber = React.useMemo(() => {
+    const cleanDate = posDate.replace(/-/g, '').slice(2); // e.g. 261019
+    const prefix = `POS-${cleanDate}-`;
+
+    let maxSerial = 0;
+    const todaySales = sales.filter(s => s.date === posDate);
+
+    todaySales.forEach(s => {
+      if (s.notes) {
+        const match = s.notes.match(/Bill #POS-\d+-(\d+)/i);
+        if (match && match[1]) {
+          const serialNum = parseInt(match[1], 10);
+          if (!isNaN(serialNum) && serialNum > maxSerial) {
+            maxSerial = serialNum;
+          }
+        }
+      }
+    });
+
+    return `${prefix}${String(maxSerial + 1).padStart(3, '0')}`;
+  }, [sales, posDate]);
+
+  // POS Cart Total
+  const posCartTotal = React.useMemo(() => {
+    return posCart.reduce((acc, item) => acc + item.price * item.qty, 0);
+  }, [posCart]);
+
+  // Toggle item in POS cart
+  const handleTogglePosItem = (product: { name: string; category: string; price: number }) => {
+    setPosCart(prev => {
+      const idx = prev.findIndex(i => i.name === product.name);
+      if (idx >= 0) {
+        // Already selected -> unselect & remove from list
+        return prev.filter(i => i.name !== product.name);
+      } else {
+        // Not selected -> add with qty 1
+        return [...prev, { name: product.name, category: product.category, price: product.price, qty: 1 }];
+      }
+    });
+  };
+
+  // Change quantity for POS cart item
+  const updatePosQty = (name: string, delta: number) => {
+    setPosCart(prev => {
+      return prev.map(item => {
+        if (item.name === name) {
+          const newQty = item.qty + delta;
+          return newQty > 0 ? { ...item, qty: newQty } : null;
+        }
+        return item;
+      }).filter(Boolean) as Array<{ name: string; category: string; price: number; qty: number }>;
+    });
+  };
+
+  // Change price for POS cart item
+  const updatePosPrice = (name: string, newPrice: number) => {
+    setPosCart(prev => {
+      return prev.map(item => {
+        if (item.name === name) {
+          return { ...item, price: Math.max(0, newPrice) };
+        }
+        return item;
+      });
+    });
+  };
+
+  // Print 3-Inch Thermal Slip using browser print window
+  const printThermalSlip = (billData: { billNo: string; date: string; items: Array<{ name: string; price: number; qty: number }>; total: number }) => {
+    const printWindow = window.open('', '_blank', 'width=380,height=600');
+    if (!printWindow) {
+      triggerToast('⚠️ Please allow popups to print the thermal receipt.');
+      return;
+    }
+
+    const itemsHtml = billData.items.map(item => `
+      <tr>
+        <td style="padding: 4px 0; text-align: left; font-size: 11px; word-break: break-word;">${item.name}</td>
+        <td style="padding: 4px 0; text-align: center; font-size: 11px;">${item.qty}</td>
+        <td style="padding: 4px 0; text-align: right; font-size: 11px;">${formatIndianCurrency(item.price)}</td>
+        <td style="padding: 4px 0; text-align: right; font-size: 11px; font-weight: bold;">${formatIndianCurrency(item.qty * item.price)}</td>
+      </tr>
+    `).join('');
+
+    const formattedDate = formatDateFormatted(billData.date);
+    const currentTimeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Receipt - ${billData.billNo}</title>
+        <style>
+          @page {
+            size: 80mm auto; /* 3 inch width, dynamic length */
+            margin: 0;
+          }
+          body {
+            font-family: 'Courier New', Courier, monospace, system-ui;
+            width: 72mm;
+            margin: 4mm auto;
+            color: #000;
+            background: #fff;
+            font-size: 11px;
+            line-height: 1.3;
+          }
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          .bold { font-weight: bold; }
+          .title { font-size: 16px; font-weight: 900; margin-bottom: 2px; letter-spacing: 0.5px; }
+          .subtitle { font-size: 10px; margin-bottom: 6px; }
+          .divider { border-top: 1px dashed #000; margin: 6px 0; }
+          .double-divider { border-top: 2px double #000; margin: 6px 0; }
+          table { width: 100%; border-collapse: collapse; }
+          th { border-bottom: 1px dashed #000; font-size: 10px; padding-bottom: 3px; }
+          .footer { margin-top: 10px; font-size: 9px; text-align: center; }
+          @media print {
+            body { width: 100%; margin: 0; padding: 2mm 3mm; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="divider"></div>
+
+        <div style="font-size: 10px; display: flex; justify-content: space-between;">
+          <span><b>Bill No:</b> ${billData.billNo}</span>
+          <span><b>Pay:</b> POS</span>
+        </div>
+        <div style="font-size: 10px; display: flex; justify-content: space-between;">
+          <span><b>Date:</b> ${formattedDate}</span>
+          <span>${currentTimeStr}</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align: left;">Item</th>
+              <th style="text-align: center;">Qty</th>
+              <th style="text-align: right;">Rate</th>
+              <th style="text-align: right;">Amt</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+        </table>
+
+        <div class="divider"></div>
+
+        <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 900; padding: 2px 0;">
+          <span>TOTAL PAYABLE:</span>
+          <span>₹${formatIndianCurrency(billData.total)}</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <script>
+          window.onload = function() {
+            window.focus();
+            window.print();
+            setTimeout(function() { window.close(); }, 1000);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
+  // Save POS entries into Sales Table (with or without thermal print)
+  const handleSaveAndPrintPos = async (shouldPrint: boolean = true) => {
+    if (posCart.length === 0) {
+      triggerToast('⚠️ Please select at least one product.');
+      return;
+    }
+
+    setIsProcessingPos(true);
+    const billNo = nextPosBillNumber;
+    const itemsToSave = [...posCart];
+    const totalAmount = posCartTotal;
+
+    try {
+      const newSaleEntries: SaleEntry[] = [];
+      const timestampBase = Date.now();
+
+      for (let i = 0; i < itemsToSave.length; i++) {
+        const item = itemsToSave[i];
+        const saleEntry: SaleEntry = {
+          id: (timestampBase + i).toString(),
+          date: posDate,
+          item_name: item.name,
+          category: item.category || 'Bakery',
+          quantity: item.qty,
+          unit: 'Unit',
+          unit_price: item.price,
+          total_amount: item.qty * item.price,
+          payment_method: 'POS',
+          notes: `Bill #${billNo} (POS Thermal)`
+        };
+
+        if (supabase) {
+          const { id, unit, ...payload } = saleEntry;
+          const { data, error } = await supabase.from('sales').insert([payload]).select();
+          if (error) {
+            console.error('Supabase POS Sale Error:', error);
+          } else if (data && data.length > 0) {
+            newSaleEntries.push({ ...saleEntry, ...data[0] });
+            continue;
+          }
+        }
+        newSaleEntries.push(saleEntry);
+      }
+
+      // Prepend to sales state so table updates immediately
+      setSales(prev => [...newSaleEntries, ...prev]);
+
+      const billSnapshot = {
+        billNo,
+        date: posDate,
+        items: itemsToSave.map(i => ({ name: i.name, price: i.price, qty: i.qty })),
+        total: totalAmount
+      };
+      setLastPrintedBill(billSnapshot);
+
+      if (shouldPrint) {
+        // Trigger thermal print
+        printThermalSlip(billSnapshot);
+        triggerToast(`🎉 Bill ${billNo} saved to Sales & sent to Thermal Printer!`);
+      } else {
+        triggerToast(`✅ Bill ${billNo} saved to Sales successfully!`);
+      }
+
+      // Clear cart
+      setPosCart([]);
+    } catch (err: any) {
+      console.error('POS Checkout Error:', err);
+      triggerToast(`⚠️ POS Error: ${err?.message || 'Failed to process POS bill.'}`);
+    } finally {
+      setIsProcessingPos(false);
+    }
+  };
+
 
 
   // Extract unique available values dynamically from dataset (Only available data!)
@@ -1051,6 +1504,39 @@ export default function AdminPage() {
             }}>
             <FileSpreadsheet size={15} /> Export to Excel
           </button>
+
+          {/* POS Bill Print & Quick Sale Button */}
+          <button
+            onClick={() => {
+              setPosDate(new Date().toISOString().slice(0, 10));
+              setShowPosModal(true);
+            }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+              color: '#fff',
+              border: '1px solid rgba(196, 181, 253, 0.3)',
+              padding: '9px 18px',
+              borderRadius: '10px',
+              fontWeight: '700',
+              fontSize: '13px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 14px rgba(139, 92, 246, 0.4)',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-1px)';
+              e.currentTarget.style.boxShadow = '0 6px 18px rgba(139, 92, 246, 0.55)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = '0 4px 14px rgba(139, 92, 246, 0.4)';
+            }}>
+            <Printer size={16} /> POS Counter Sale
+          </button>
+
           <button
             onClick={() => setShowEntryTypeModal(true)}
             style={{
@@ -1566,6 +2052,7 @@ export default function AdminPage() {
                 <option value="Card">Card</option>
                 <option value="Cash">Cash</option>
                 <option value="Bank Transfer">Bank Transfer</option>
+                <option value="POS">POS</option>
               </select>
             </div>
 
@@ -2633,6 +3120,7 @@ export default function AdminPage() {
                     <option value="Card">Credit/Debit Card</option>
                     <option value="Cash">Cash</option>
                     <option value="Bank Transfer">Bank Transfer</option>
+                    <option value="POS">POS</option>
                   </select>
                 </div>
               </div>
@@ -2946,9 +3434,47 @@ export default function AdminPage() {
               Select the type of financial transaction you want to record.
             </p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '24px' }}>
 
-              {/* Option 1: Sale Entry */}
+              {/* Option 1: POS Counter Sale */}
+              <button
+                onClick={() => {
+                  setShowEntryTypeModal(false);
+                  setPosDate(new Date().toISOString().slice(0, 10));
+                  setShowPosModal(true);
+                }}
+                style={{
+                  background: 'linear-gradient(145deg, rgba(139, 92, 246, 0.15) 0%, rgba(139, 92, 246, 0.04) 100%)',
+                  border: '1px solid rgba(139, 92, 246, 0.35)',
+                  borderRadius: '20px',
+                  padding: '24px 16px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  textAlign: 'center'
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = '#a78bfa')}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(139, 92, 246, 0.35)')}>
+
+                <div style={{ width: '52px', height: '52px', background: 'rgba(139, 92, 246, 0.2)', border: '1px solid rgba(139, 92, 246, 0.4)', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c4b5fd' }}>
+                  <Printer size={26} />
+                </div>
+
+                <div>
+                  <div style={{ color: '#c4b5fd', fontWeight: '800', fontSize: '16px', marginBottom: '4px' }}>
+                    POS Counter Sale
+                  </div>
+                  <div style={{ color: '#94a3b8', fontSize: '12px', lineHeight: '1.3' }}>
+                    Touch POS, 3-inch thermal slip print & auto-save
+                  </div>
+                </div>
+
+              </button>
+
+              {/* Option 2: Sale Entry */}
               <button
                 onClick={() => {
                   setShowEntryTypeModal(false);
@@ -2985,7 +3511,7 @@ export default function AdminPage() {
 
               </button>
 
-              {/* Option 2: Purchase Entry */}
+              {/* Option 3: Purchase Entry */}
               <button
                 onClick={() => {
                   setShowEntryTypeModal(false);
@@ -3155,6 +3681,1154 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* ========================================================================= */}
+      {/* 👑 MODERN ROYAL POS COUNTER SALE MODAL (3-INCH THERMAL PRINTER SUPPORT)  */}
+      {/* ========================================================================= */}
+      {showPosModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(7, 10, 19, 0.85)',
+          backdropFilter: 'blur(12px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 99999,
+          padding: '16px'
+        }}>
+          <div style={{
+            background: 'linear-gradient(145deg, #0e1322 0%, #13182e 100%)',
+            border: '1px solid rgba(139, 92, 246, 0.35)',
+            borderRadius: '24px',
+            width: '100%',
+            maxWidth: '1240px',
+            height: '92vh',
+            maxHeight: '860px',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 40px rgba(139, 92, 246, 0.15)',
+            overflow: 'hidden'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '16px 24px',
+              background: 'rgba(15, 23, 42, 0.65)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              gap: '14px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                  boxShadow: '0 4px 14px rgba(139, 92, 246, 0.4)'
+                }}>
+                  <Printer size={22} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', margin: 0, letterSpacing: '-0.02em' }}>
+                      The Baker Bro — POS Counter Sale
+                    </h2>
+                    <span style={{
+                      fontSize: '10px',
+                      fontWeight: '800',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      background: 'rgba(139, 92, 246, 0.2)',
+                      color: '#c4b5fd',
+                      border: '1px solid rgba(139, 92, 246, 0.4)',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em'
+                    }}>
+                      3-Inch Thermal Ready
+                    </span>
+                  </div>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>
+                    Tap product buttons to add/remove • Auto-records in Sales with payment method <b>POS</b>
+                  </p>
+                </div>
+              </div>
+
+              {/* Date Selector & Product Register Button & Bill No & Close */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: '150px' }}>
+                  <span style={{ fontSize: '10px', fontWeight: '700', color: '#c4b5fd', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sale Date</span>
+                  <CustomDatePicker
+                    value={posDate}
+                    onChange={(e: any) => setPosDate(e.target?.value || e)}
+                    style={{ minHeight: '34px', padding: '4px 8px', fontSize: '12px', background: '#1e293b' }}
+                  />
+                </div>
+
+                {/* Edit Products & Price Register Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowPriceRegisterModal(true)}
+                  title="Open Products & Price Register"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    background: 'rgba(245, 158, 11, 0.15)',
+                    border: '1px solid rgba(245, 158, 11, 0.35)',
+                    color: '#fbbf24',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    whiteSpace: 'nowrap'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(245, 158, 11, 0.25)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(245, 158, 11, 0.15)')}>
+                  <Tag size={14} /> Price Register ({posCatalog.length})
+                </button>
+
+                <div style={{
+                  padding: '6px 12px',
+                  borderRadius: '10px',
+                  background: 'rgba(139, 92, 246, 0.12)',
+                  border: '1px solid rgba(139, 92, 246, 0.3)',
+                  textAlign: 'right'
+                }}>
+                  <div style={{ fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Current Bill #</div>
+                  <div style={{ fontSize: '13px', fontWeight: '800', color: '#a78bfa', fontFamily: 'monospace' }}>{nextPosBillNumber}</div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setShowPosModal(false)}
+                  style={{
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '10px',
+                    color: '#94a3b8',
+                    width: '36px',
+                    height: '36px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}>
+                  <X size={18} />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Body - 2 Columns: Left = Product Catalog Buttons | Right = Bill Summary & Today Sale Counter */}
+            <div style={{
+              flex: 1,
+              display: 'grid',
+              gridTemplateColumns: '1.45fr 1fr',
+              gap: '0',
+              overflow: 'hidden'
+            }}>
+
+              {/* LEFT COLUMN: Large Product Buttons with Search & Category Tabs */}
+              <div style={{
+                padding: '16px 20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px',
+                borderRight: '1px solid rgba(255, 255, 255, 0.08)',
+                overflow: 'hidden'
+              }}>
+                {/* Search & Filter Bar */}
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <div style={{
+                    flex: 1,
+                    position: 'relative',
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}>
+                    <Search size={14} style={{ position: 'absolute', left: '10px', color: '#64748b' }} />
+                    <input
+                      type="text"
+                      placeholder="Search bakery product..."
+                      value={posSearchTerm}
+                      onChange={(e) => setPosSearchTerm(e.target.value)}
+                      style={{
+                        width: '100%',
+                        padding: '8px 10px 8px 32px',
+                        background: 'rgba(15, 23, 42, 0.8)',
+                        border: '1px solid rgba(255, 255, 255, 0.12)',
+                        borderRadius: '10px',
+                        color: '#fff',
+                        fontSize: '12px',
+                        outline: 'none'
+                      }}
+                    />
+                    {posSearchTerm && (
+                      <button
+                        onClick={() => setPosSearchTerm('')}
+                        style={{ position: 'absolute', right: '8px', background: 'none', border: 'none', color: '#64748b', cursor: 'pointer' }}>
+                        <X size={13} />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Category Pills */}
+                  <select
+                    value={posSelectedCategory}
+                    onChange={(e) => setPosSelectedCategory(e.target.value)}
+                    style={{
+                      padding: '8px 10px',
+                      background: 'rgba(15, 23, 42, 0.8)',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      borderRadius: '10px',
+                      color: '#a78bfa',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}>
+                    <option value="all">All Categories</option>
+                    {Array.from(new Set(posCatalog.map(p => p.category))).sort().map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Prompt instructions */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#94a3b8' }}>
+                  <span>Tap a product to select (<b>highlighted</b>). Tap again to unselect & remove.</span>
+                  <span style={{ color: '#c4b5fd', fontWeight: '700' }}>{posCart.length} item(s) in slip</span>
+                </div>
+
+                {/* Dynamic Sized Product Buttons Grid based on Sales Volume */}
+                <div style={{
+                  flex: 1,
+                  overflowY: 'auto',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, 1fr)',
+                  gap: '12px',
+                  alignContent: 'start',
+                  padding: '6px 4px 12px 2px'
+                }}>
+                  {posCatalog
+                    .filter(p => {
+                      const matchesSearch = !posSearchTerm || p.name.toLowerCase().includes(posSearchTerm.toLowerCase());
+                      const matchesCat = posSelectedCategory === 'all' || p.category === posSelectedCategory;
+                      return matchesSearch && matchesCat;
+                    })
+                    .map((product, index) => {
+                      const cartItem = posCart.find(i => i.name === product.name);
+                      const isSelected = Boolean(cartItem);
+
+                      // Dynamic tiering based on sales ranking:
+                      // Top 2: Big prominent cards (span 2 cols)
+                      // Next 4 (index 2..5): Medium cards
+                      // Remaining (index >= 6): Compact cards
+                      const isTop2 = index < 2;
+                      const isNext4 = index >= 2 && index < 6;
+                      const isSmall = index >= 6;
+
+                      const gridColSpan = isTop2 ? 'span 2' : 'span 1';
+                      const minHeight = isTop2 ? '118px' : isNext4 ? '98px' : '82px';
+
+                      return (
+                        <button
+                          key={product.name}
+                          type="button"
+                          onClick={() => handleTogglePosItem(product)}
+                          style={{
+                            gridColumn: gridColSpan,
+                            minHeight: minHeight,
+                            background: isSelected
+                              ? 'linear-gradient(145deg, rgba(139, 92, 246, 0.35) 0%, rgba(109, 40, 217, 0.25) 100%)'
+                              : isTop2
+                                ? 'linear-gradient(145deg, rgba(245, 158, 11, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)'
+                                : isNext4
+                                  ? 'linear-gradient(145deg, rgba(99, 102, 241, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%)'
+                                  : 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%)',
+                            border: isSelected
+                              ? '2px solid #a855f7'
+                              : isTop2
+                                ? '1.5px solid rgba(245, 158, 11, 0.35)'
+                                : isNext4
+                                  ? '1px solid rgba(129, 140, 248, 0.2)'
+                                  : '1px solid rgba(255, 255, 255, 0.06)',
+                            borderRadius: isTop2 ? '16px' : isNext4 ? '13px' : '10px',
+                            padding: isTop2 ? '14px 14px' : isNext4 ? '11px 11px' : '9px 10px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                            cursor: 'pointer',
+                            textAlign: 'left',
+                            transition: 'all 0.15s ease',
+                            position: 'relative',
+                            boxShadow: isSelected
+                              ? '0 4px 14px rgba(139, 92, 246, 0.25)'
+                              : 'none'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!isSelected) {
+                              e.currentTarget.style.borderColor = isTop2 ? '#fbbf24' : '#8b5cf6';
+                              e.currentTarget.style.transform = 'translateY(-2px)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!isSelected) {
+                              e.currentTarget.style.borderColor = isTop2
+                                ? 'rgba(245, 158, 11, 0.35)'
+                                : isNext4
+                                  ? 'rgba(129, 140, 248, 0.2)'
+                                  : 'rgba(255, 255, 255, 0.06)';
+                              e.currentTarget.style.transform = 'translateY(0)';
+                            }
+                          }}>
+                          
+                          {/* Selection Checkmark */}
+                          {isSelected && (
+                            <div style={{
+                              position: 'absolute',
+                              top: '7px',
+                              right: '7px',
+                              width: isTop2 ? '22px' : '18px',
+                              height: isTop2 ? '22px' : '18px',
+                              borderRadius: '50%',
+                              background: '#a855f7',
+                              color: '#fff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: isTop2 ? '12px' : '10px',
+                              fontWeight: '900',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                              zIndex: 2
+                            }}>
+                              ✓
+                            </div>
+                          )}
+
+                          {/* Top Category Tag */}
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isSmall ? '2px' : '4px' }}>
+                              <span style={{
+                                fontSize: isTop2 ? '11px' : '9px',
+                                fontWeight: '700',
+                                color: isSelected ? '#ddd6fe' : isTop2 ? '#fbbf24' : '#64748b',
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.04em'
+                              }}>
+                                {product.category}
+                              </span>
+                            </div>
+
+                            {/* Product Name (Increased Font Size) */}
+                            <div style={{
+                              fontSize: isTop2 ? '16px' : isNext4 ? '14px' : '12.5px',
+                              fontWeight: '800',
+                              color: isSelected ? '#fff' : '#f8fafc',
+                              lineHeight: '1.25',
+                              display: '-webkit-box',
+                              WebkitLineClamp: isSmall ? 1 : 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden'
+                            }}>
+                              {product.name}
+                            </div>
+
+                            {/* Sold counter if available */}
+                            {product.salesCount > 0 && !isSmall && (
+                              <div style={{ fontSize: '10px', color: '#94a3b8', marginTop: '3px' }}>
+                                Sold: <b>{product.salesCount}</b> units
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Price & Selected Qty footer */}
+                          <div style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            marginTop: isSmall ? '5px' : '8px',
+                            paddingTop: isSmall ? '4px' : '6px',
+                            borderTop: isSelected ? '1px solid rgba(139, 92, 246, 0.4)' : '1px solid rgba(255, 255, 255, 0.06)'
+                          }}>
+                            <span style={{
+                              fontSize: isTop2 ? '16px' : isNext4 ? '14px' : '12.5px',
+                              fontWeight: '800',
+                              color: isSelected ? '#fbbf24' : isTop2 ? '#fbbf24' : '#38bdf8'
+                            }}>
+                              ₹{formatIndianCurrency(cartItem ? cartItem.price : product.price, false)}
+                            </span>
+                            {isSelected && (
+                              <span style={{
+                                fontSize: isTop2 ? '12px' : '11px',
+                                fontWeight: '800',
+                                color: '#c4b5fd',
+                                background: 'rgba(139, 92, 246, 0.35)',
+                                padding: '1px 6px',
+                                borderRadius: '6px'
+                              }}>
+                                x{cartItem.qty}
+                              </span>
+                            )}
+                          </div>
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* RIGHT COLUMN: POS Slip Cart & Today's Sale Stats & Print Action */}
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                background: 'rgba(11, 15, 25, 0.6)',
+                overflow: 'hidden'
+              }}>
+
+                {/* Right Top Bar: Today's Sale & Bill Counter */}
+                <div style={{
+                  padding: '12px 16px',
+                  background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(15, 23, 42, 0.8) 100%)',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: '10px'
+                }}>
+                  <div style={{
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.06)'
+                  }}>
+                    <span style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase' }}>Today&apos;s Total Sales</span>
+                    <div style={{ fontSize: '16px', fontWeight: '800', color: '#4ade80', marginTop: '2px' }}>
+                      ₹{formatIndianCurrency(todaySalesStats.total)}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    background: 'rgba(255, 255, 255, 0.03)',
+                    border: '1px solid rgba(255, 255, 255, 0.06)'
+                  }}>
+                    <span style={{ fontSize: '10px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase' }}>Today POS Bills</span>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginTop: '2px' }}>
+                      <span style={{ fontSize: '16px', fontWeight: '800', color: '#c4b5fd' }}>
+                        {todaySalesStats.posBills}
+                      </span>
+                      <span style={{ fontSize: '10px', color: '#94a3b8', fontFamily: 'monospace' }}>
+                        (Next: {nextPosBillNumber})
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Slip vs Today's History Tab Switcher */}
+                <div style={{
+                  padding: '8px 16px',
+                  background: 'rgba(15, 23, 42, 0.4)',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setPosRightTab('slip')}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: posRightTab === 'slip' ? 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)' : 'rgba(255, 255, 255, 0.05)',
+                        color: posRightTab === 'slip' ? '#fff' : '#94a3b8',
+                        fontSize: '11px',
+                        fontWeight: '800',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        transition: 'all 0.15s'
+                      }}>
+                      <ShoppingCart size={13} /> Current Slip ({posCart.length})
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setPosRightTab('history')}
+                      style={{
+                        padding: '5px 12px',
+                        borderRadius: '8px',
+                        border: 'none',
+                        background: posRightTab === 'history' ? 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' : 'rgba(255, 255, 255, 0.05)',
+                        color: posRightTab === 'history' ? '#fff' : '#94a3b8',
+                        fontSize: '11px',
+                        fontWeight: '800',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px',
+                        transition: 'all 0.15s'
+                      }}>
+                      <FileSpreadsheet size={13} /> Today&apos;s Bills ({todayPosBillsList.length})
+                    </button>
+                  </div>
+
+                  {posRightTab === 'slip' && posCart.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setPosCart([])}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#f87171',
+                        fontSize: '11px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        padding: '2px 6px'
+                      }}>
+                      Clear All
+                    </button>
+                  )}
+                </div>
+
+                {/* TAB 1: ACTUAL 3-INCH THERMAL SLIP PREVIEW (Scroll is on the outer container, slip is pure realistic paper) */}
+                {posRightTab === 'slip' ? (
+                  <div style={{
+                    flex: 1,
+                    overflowY: 'auto',
+                    padding: '20px 16px',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'flex-start',
+                    background: 'radial-gradient(ellipse at center, rgba(30, 27, 75, 0.45) 0%, rgba(5, 7, 15, 0.85) 100%)'
+                  }}>
+                    {/* Realistic Thermal Paper Receipt (Continuous strip like a real 3-inch roll printer) */}
+                    <div style={{
+                      width: '100%',
+                      maxWidth: '310px',
+                      background: '#fdfbf7',
+                      color: '#111827',
+                      padding: '16px 14px 20px 14px',
+                      borderRadius: '4px',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,0,0,0.1)',
+                      fontFamily: 'monospace, Courier, system-ui',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      position: 'relative'
+                    }}>
+                      {/* Metadata Header */}
+                      <div style={{ fontSize: '10px', display: 'flex', justifyContent: 'space-between', color: '#374151', marginBottom: '2px' }}>
+                        <span><b>Bill:</b> {nextPosBillNumber}</span>
+                        <span><b>Pay:</b> POS</span>
+                      </div>
+                      <div style={{ fontSize: '10px', display: 'flex', justifyContent: 'space-between', color: '#374151', paddingBottom: '6px', borderBottom: '1px dashed #6b7280' }}>
+                        <span><b>Date:</b> {formatDateFormatted(posDate)}</span>
+                        <span>{new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true })}</span>
+                      </div>
+
+                      {/* Items Table Header */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.5fr 0.65fr 0.75fr', fontSize: '10px', fontWeight: 'bold', borderBottom: '1px dashed #6b7280', padding: '6px 0', color: '#111827' }}>
+                        <span>ITEM</span>
+                        <span style={{ textAlign: 'center' }}>QTY</span>
+                        <span style={{ textAlign: 'right' }}>RATE</span>
+                        <span style={{ textAlign: 'right' }}>AMT</span>
+                      </div>
+
+                      {/* Items List (Natural flow, NO internal scrollbar, NO remove button inside slip) */}
+                      <div style={{ padding: '2px 0' }}>
+                        {posCart.length === 0 ? (
+                          <div style={{ padding: '36px 10px', textAlign: 'center', color: '#9ca3af', fontSize: '11px', fontStyle: 'italic' }}>
+                            --- NO PRODUCTS SELECTED ---<br/>
+                            <span style={{ fontSize: '9px', color: '#a1a1aa' }}>Tap any product button on the left</span>
+                          </div>
+                        ) : (
+                          posCart.map(item => (
+                            <div key={item.name} style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.5fr 0.65fr 0.75fr', alignItems: 'center', fontSize: '11px', color: '#111', padding: '5px 0', borderBottom: '1px dotted #e5e7eb', gap: '2px' }}>
+                              <span style={{ fontWeight: '600', wordBreak: 'break-word', lineHeight: '1.25' }}>
+                                {item.name}
+                              </span>
+                              
+                              {/* Quantity display */}
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1px' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => updatePosQty(item.name, -1)}
+                                  title="Decrease quantity"
+                                  style={{ border: 'none', background: '#e5e7eb', width: '15px', height: '15px', borderRadius: '3px', cursor: 'pointer', fontSize: '10px', lineHeight: '1', padding: 0, fontWeight: 'bold' }}>
+                                  -
+                                </button>
+                                <span style={{ fontWeight: 'bold', fontSize: '11px', minWidth: '14px', textAlign: 'center' }}>{item.qty}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => updatePosQty(item.name, 1)}
+                                  title="Increase quantity"
+                                  style={{ border: 'none', background: '#e5e7eb', width: '15px', height: '15px', borderRadius: '3px', cursor: 'pointer', fontSize: '10px', lineHeight: '1', padding: 0, fontWeight: 'bold' }}>
+                                  +
+                                </button>
+                              </div>
+
+                              {/* Editable Rate in slip */}
+                              <div style={{ textAlign: 'right' }}>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={item.price}
+                                  onChange={(e) => updatePosPrice(item.name, Number(e.target.value) || 0)}
+                                  title="Edit unit price"
+                                  style={{ width: '42px', textAlign: 'right', border: '1px solid #d1d5db', background: '#fff', fontSize: '10px', padding: '1px 2px', borderRadius: '3px', outline: 'none' }}
+                                />
+                              </div>
+
+                              {/* Line Amount */}
+                              <span style={{ textAlign: 'right', fontWeight: 'bold', color: '#000' }}>
+                                ₹{formatIndianCurrency(item.qty * item.price, false)}
+                              </span>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      {/* Total Section */}
+                      <div style={{ borderTop: '2px solid #000', paddingTop: '8px', marginTop: '6px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '14px', fontWeight: '900', color: '#000' }}>
+                          <span>TOTAL PAYABLE:</span>
+                          <span>₹{formatIndianCurrency(posCartTotal)}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* TAB 2: TODAY'S POS BILLS HISTORY LIST */
+                  <div style={{
+                    flex: 1,
+                    overflowY: 'auto',
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                  }}>
+                    <div style={{ fontSize: '11px', color: '#94a3b8', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>Bills generated on <b>{formatDateFormatted(posDate)}</b>:</span>
+                      <span style={{ color: '#c4b5fd', fontWeight: '700' }}>{todayPosBillsList.length} bill(s)</span>
+                    </div>
+
+                    {todayPosBillsList.length === 0 ? (
+                      <div style={{ padding: '40px 20px', textAlign: 'center', color: '#64748b', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px dashed rgba(255,255,255,0.08)' }}>
+                        <Printer size={28} style={{ opacity: 0.4, margin: '0 auto 8px auto', display: 'block' }} />
+                        <span style={{ fontSize: '12px', fontWeight: '600' }}>No POS bills printed for this date yet.</span>
+                        <div style={{ fontSize: '10px', color: '#475569', marginTop: '4px' }}>Select products on the left and click &apos;Print Thermal Slip&apos; to generate your first bill.</div>
+                      </div>
+                    ) : (
+                      todayPosBillsList.map(bill => (
+                        <div
+                          key={bill.billNo}
+                          style={{
+                            background: 'rgba(255, 255, 255, 0.03)',
+                            border: '1px solid rgba(255, 255, 255, 0.08)',
+                            borderRadius: '12px',
+                            padding: '12px 14px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '8px',
+                            transition: 'all 0.15s'
+                          }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: '13px', fontWeight: '800', color: '#c4b5fd', fontFamily: 'monospace' }}>
+                                #{bill.billNo}
+                              </span>
+                              <span style={{ fontSize: '9px', fontWeight: '700', padding: '1px 6px', borderRadius: '4px', background: 'rgba(139, 92, 246, 0.2)', color: '#a78bfa' }}>
+                                POS
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '14px', fontWeight: '800', color: '#4ade80' }}>
+                              ₹{formatIndianCurrency(bill.total)}
+                            </span>
+                          </div>
+
+                          <div style={{ fontSize: '11px', color: '#cbd5e1', lineHeight: '1.4' }}>
+                            {bill.items.map(i => `${i.name} (x${i.qty})`).join(', ')}
+                          </div>
+
+                          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', paddingTop: '4px', borderTop: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                            <button
+                              type="button"
+                              onClick={() => printThermalSlip(bill)}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 10px',
+                                borderRadius: '6px',
+                                background: 'rgba(139, 92, 246, 0.2)',
+                                border: '1px solid rgba(139, 92, 246, 0.4)',
+                                color: '#c4b5fd',
+                                fontSize: '11px',
+                                fontWeight: '700',
+                                cursor: 'pointer'
+                              }}>
+                              <Printer size={12} /> Re-print 3&quot; Slip
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* Right Bottom: Summary & Print Thermal Button */}
+                <div style={{
+                  padding: '14px 16px',
+                  background: 'rgba(15, 23, 42, 0.95)',
+                  borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    padding: '8px 12px',
+                    borderRadius: '10px',
+                    background: 'rgba(139, 92, 246, 0.12)',
+                    border: '1px solid rgba(139, 92, 246, 0.3)'
+                  }}>
+                    <div>
+                      <span style={{ fontSize: '11px', fontWeight: '700', color: '#c4b5fd', textTransform: 'uppercase' }}>Total Payable</span>
+                      <div style={{ fontSize: '9px', color: '#94a3b8' }}>Payment Method: <b>POS</b></div>
+                    </div>
+                    <span style={{ fontSize: '20px', fontWeight: '900', color: '#4ade80' }}>
+                      ₹{formatIndianCurrency(posCartTotal)}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowPosModal(false)}
+                      style={{
+                        padding: '12px 14px',
+                        background: 'rgba(255, 255, 255, 0.05)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        borderRadius: '12px',
+                        color: '#94a3b8',
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s'
+                      }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = '#fff')}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}>
+                      Close
+                    </button>
+
+                    {/* OPTION 1: SAVE ONLY (Record in Sales, do not open print dialog) */}
+                    <button
+                      type="button"
+                      disabled={posCart.length === 0 || isProcessingPos}
+                      onClick={() => handleSaveAndPrintPos(false)}
+                      style={{
+                        flex: 1,
+                        padding: '12px 14px',
+                        background: posCart.length > 0 && !isProcessingPos
+                          ? 'rgba(16, 185, 129, 0.18)'
+                          : '#1e293b',
+                        border: posCart.length > 0 && !isProcessingPos
+                          ? '1px solid rgba(52, 211, 153, 0.4)'
+                          : '1px solid rgba(255, 255, 255, 0.06)',
+                        borderRadius: '12px',
+                        color: posCart.length > 0 && !isProcessingPos ? '#34d399' : '#64748b',
+                        fontSize: '12px',
+                        fontWeight: '800',
+                        cursor: posCart.length > 0 && !isProcessingPos ? 'pointer' : 'not-allowed',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        transition: 'all 0.15s'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (posCart.length > 0 && !isProcessingPos) {
+                          e.currentTarget.style.background = 'rgba(16, 185, 129, 0.28)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (posCart.length > 0 && !isProcessingPos) {
+                          e.currentTarget.style.background = 'rgba(16, 185, 129, 0.18)';
+                        }
+                      }}>
+                      ✓ Save Only
+                    </button>
+
+                    {/* OPTION 2: SAVE & PRINT (Record in Sales and trigger thermal printer) */}
+                    <button
+                      type="button"
+                      disabled={posCart.length === 0 || isProcessingPos}
+                      onClick={() => handleSaveAndPrintPos(true)}
+                      style={{
+                        flex: 1.3,
+                        padding: '12px 16px',
+                        background: posCart.length > 0 && !isProcessingPos
+                          ? 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)'
+                          : '#334155',
+                        border: '1px solid rgba(196, 181, 253, 0.3)',
+                        borderRadius: '12px',
+                        color: posCart.length > 0 && !isProcessingPos ? '#fff' : '#64748b',
+                        fontSize: '12.5px',
+                        fontWeight: '800',
+                        cursor: posCart.length > 0 && !isProcessingPos ? 'pointer' : 'not-allowed',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        boxShadow: posCart.length > 0 && !isProcessingPos
+                          ? '0 6px 20px rgba(139, 92, 246, 0.45)'
+                          : 'none',
+                        transition: 'all 0.15s'
+                      }}>
+                      <Printer size={15} />
+                      {isProcessingPos ? 'Processing...' : 'Save & Print 3" Slip'}
+                    </button>
+                  </div>
+
+                  {lastPrintedBill && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10px', color: '#94a3b8', paddingTop: '4px' }}>
+                      <span>Last Printed: <b style={{ color: '#c4b5fd' }}>{lastPrintedBill.billNo}</b> (₹{formatIndianCurrency(lastPrintedBill.total)})</span>
+                      <button
+                        type="button"
+                        onClick={() => printThermalSlip(lastPrintedBill)}
+                        style={{ background: 'none', border: 'none', color: '#a78bfa', cursor: 'pointer', textDecoration: 'underline', padding: '0', fontSize: '10px' }}>
+                        Re-print Slip
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* 🏷️ DEDICATED PRODUCTS & PRICE REGISTER MODAL (EDITABLE TABLE)            */}
+      {/* ========================================================================= */}
+      {showPriceRegisterModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'rgba(7, 10, 19, 0.85)',
+          backdropFilter: 'blur(12px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 999999,
+          padding: '20px'
+        }}>
+          <div style={{
+            background: 'linear-gradient(145deg, #111827 0%, #1e1b4b 100%)',
+            border: '1px solid rgba(245, 158, 11, 0.35)',
+            borderRadius: '24px',
+            width: '100%',
+            maxWidth: '850px',
+            maxHeight: '85vh',
+            display: 'flex',
+            flexDirection: 'column',
+            boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 35px rgba(245, 158, 11, 0.15)',
+            overflow: 'hidden'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              padding: '16px 24px',
+              background: 'rgba(15, 23, 42, 0.8)',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '10px',
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                  boxShadow: '0 4px 12px rgba(245, 158, 11, 0.3)'
+                }}>
+                  <Tag size={20} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', margin: 0 }}>
+                    Product & Price Register
+                  </h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>
+                    Add new products, modify rates & delete items. Changes update POS catalog instantly.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowPriceRegisterModal(false)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '10px',
+                  color: '#94a3b8',
+                  width: '34px',
+                  height: '34px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}>
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Quick Add / Update Product Form Bar */}
+            <form
+              onSubmit={handleSaveProductRegister}
+              style={{
+                padding: '14px 24px',
+                background: 'rgba(15, 23, 42, 0.5)',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                display: 'grid',
+                gridTemplateColumns: '2fr 1.2fr 1fr auto',
+                gap: '10px',
+                alignItems: 'flex-end'
+              }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '10px', fontWeight: '700', color: '#fbbf24', textTransform: 'uppercase' }}>Product Name *</span>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Belgian Chocolate Cake"
+                  value={newProductForm.name}
+                  onChange={(e) => setNewProductForm({ ...newProductForm, name: e.target.value })}
+                  style={{
+                    padding: '8px 10px',
+                    background: '#1e293b',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: '8px',
+                    color: '#fff',
+                    fontSize: '12px',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '10px', fontWeight: '700', color: '#fbbf24', textTransform: 'uppercase' }}>Category</span>
+                <select
+                  value={newProductForm.category}
+                  onChange={(e) => setNewProductForm({ ...newProductForm, category: e.target.value })}
+                  style={{
+                    padding: '8px 10px',
+                    background: '#1e293b',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: '8px',
+                    color: '#fff',
+                    fontSize: '12px',
+                    outline: 'none'
+                  }}>
+                  <option value="Cakes">Cakes</option>
+                  <option value="Pastries">Pastries</option>
+                  <option value="Cupcakes">Cupcakes</option>
+                  <option value="Breads">Breads</option>
+                  <option value="Snacks">Snacks</option>
+                  <option value="Beverages">Beverages</option>
+                  <option value="Bakery">Bakery (General)</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ fontSize: '10px', fontWeight: '700', color: '#fbbf24', textTransform: 'uppercase' }}>Default Rate (₹) *</span>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  placeholder="₹ 150"
+                  value={newProductForm.price}
+                  onChange={(e) => setNewProductForm({ ...newProductForm, price: e.target.value })}
+                  style={{
+                    padding: '8px 10px',
+                    background: '#1e293b',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: '8px',
+                    color: '#fbbf24',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+
+              <button
+                type="submit"
+                style={{
+                  padding: '8px 16px',
+                  height: '34px',
+                  background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: '#fff',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}>
+                Save / Add Item
+              </button>
+            </form>
+
+            {/* Filter Search inside Price Register */}
+            <div style={{ padding: '10px 24px', background: 'rgba(15, 23, 42, 0.3)', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ position: 'relative', width: '280px' }}>
+                <Search size={13} style={{ position: 'absolute', left: '10px', top: '9px', color: '#64748b' }} />
+                <input
+                  type="text"
+                  placeholder="Search in register..."
+                  value={registerSearchTerm}
+                  onChange={(e) => setRegisterSearchTerm(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '6px 10px 6px 30px',
+                    background: 'rgba(15, 23, 42, 0.8)',
+                    border: '1px solid rgba(255, 255, 255, 0.1)',
+                    borderRadius: '8px',
+                    color: '#fff',
+                    fontSize: '11px',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+              <span style={{ fontSize: '11px', color: '#94a3b8' }}>
+                Showing <b>{posCatalog.filter(p => !registerSearchTerm || p.name.toLowerCase().includes(registerSearchTerm.toLowerCase())).length}</b> products in catalog
+              </span>
+            </div>
+
+            {/* Editable Product Register Table */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 24px 20px 24px' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', marginTop: '10px' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.1)', color: '#94a3b8', fontSize: '11px', textTransform: 'uppercase' }}>
+                    <th style={{ padding: '8px 10px' }}>Product Name</th>
+                    <th style={{ padding: '8px 10px' }}>Category</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right' }}>Default Rate (₹)</th>
+                    <th style={{ padding: '8px 10px', textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {posCatalog
+                    .filter(p => !registerSearchTerm || p.name.toLowerCase().includes(registerSearchTerm.toLowerCase()))
+                    .map(item => {
+                      return (
+                        <tr key={item.name} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: '12px' }}>
+                          <td style={{ padding: '10px', fontWeight: '600', color: '#f8fafc' }}>
+                            {item.name}
+                          </td>
+                          <td style={{ padding: '10px' }}>
+                            <span style={{ padding: '2px 8px', background: 'rgba(139, 92, 246, 0.15)', color: '#c4b5fd', borderRadius: '4px', fontSize: '10px', fontWeight: '700' }}>
+                              {item.category}
+                            </span>
+                          </td>
+                          <td style={{ padding: '10px', textAlign: 'right' }}>
+                            <input
+                              type="number"
+                              min="0"
+                              value={item.price}
+                              onChange={(e) => {
+                                const newP = Math.max(0, Number(e.target.value) || 0);
+                                const existingIdx = customProducts.findIndex(p => p.name.toLowerCase() === item.name.toLowerCase());
+                                let updated: Array<{ name: string; category: string; price: number }>;
+                                if (existingIdx >= 0) {
+                                  updated = customProducts.map((p, idx) => idx === existingIdx ? { ...p, price: newP } : p);
+                                } else {
+                                  updated = [...customProducts, { name: item.name, category: item.category, price: newP }];
+                                }
+                                saveCustomProducts(updated);
+                              }}
+                              style={{
+                                width: '80px',
+                                textAlign: 'right',
+                                background: '#1e293b',
+                                border: '1px solid rgba(245, 158, 11, 0.4)',
+                                borderRadius: '6px',
+                                color: '#fbbf24',
+                                fontSize: '12px',
+                                fontWeight: '700',
+                                padding: '4px 8px',
+                                outline: 'none'
+                              }}
+                            />
+                          </td>
+                          <td style={{ padding: '10px', textAlign: 'right' }}>
+                            <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end' }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNewProductForm({ name: item.name, category: item.category, price: String(item.price) });
+                                }}
+                                title="Edit in form"
+                                style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.25)', color: '#fbbf24', padding: '4px 8px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                <Edit2 size={11} /> Edit
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteProductRegister(item.name)}
+                                title="Remove from custom register"
+                                style={{ background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#f87171', padding: '4px 8px', borderRadius: '6px', cursor: 'pointer', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                <Trash2 size={11} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{ padding: '12px 24px', background: 'rgba(15, 23, 42, 0.8)', borderTop: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setShowPriceRegisterModal(false)}
+                style={{
+                  padding: '8px 20px',
+                  background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  color: '#fff',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  cursor: 'pointer'
+                }}>
+                Done & Back to POS
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
+

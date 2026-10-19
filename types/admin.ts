@@ -9,7 +9,7 @@ export interface SaleEntry {
   unit?: QuantityUnit | string;
   unit_price: number;
   total_amount: number;
-  payment_method: 'Cash' | 'Card' | 'UPI' | 'Bank Transfer';
+  payment_method: 'Cash' | 'Card' | 'UPI' | 'Bank Transfer' | 'POS' | string;
   notes?: string;
   created_at?: string;
 }
