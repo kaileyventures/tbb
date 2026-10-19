@@ -1647,7 +1647,7 @@ export default function AdminPage() {
                 <option value="GPay">GPay / UPI</option>
                 <option value="Card">Card</option>
                 <option value="Bank Transfer">Bank Transfer</option>
-                <option value="Murria">Murria</option>
+                <option value="Current Sale">Current Sale</option>
                 <option value="Cheque">Cheque</option>
               </select>
             </div>
@@ -2769,7 +2769,7 @@ export default function AdminPage() {
                     <option value="GPay">GPay / UPI</option>
                     <option value="Card">Card</option>
                     <option value="Bank Transfer">Bank Transfer</option>
-                    <option value="Murria">Murria</option>
+                    <option value="Current Sale">Current Sale</option>
                     <option value="Cheque">Cheque</option>
                   </select>
                 </div>
