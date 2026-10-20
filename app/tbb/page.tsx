@@ -4076,7 +4076,7 @@ export default function AdminPage() {
                                 padding: '1px 6px',
                                 borderRadius: '6px'
                               }}>
-                                x{cartItem.qty}
+                                x{cartItem?.qty}
                               </span>
                             )}
                           </div>
