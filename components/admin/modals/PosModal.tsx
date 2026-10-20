@@ -1005,7 +1005,7 @@ export const PosModal: React.FC<PosModalProps> = ({
                             fontWeight: '700',
                             cursor: 'pointer'
                           }}>
-                          <Printer size={12} /> Re-print 3&quot; Slip
+                          <Printer size={12} /> Re-print
                         </button>
                       </div>
                     </div>
