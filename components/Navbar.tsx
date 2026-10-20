@@ -143,7 +143,7 @@ export default function Navbar() {
             {/* Mobile Hamburger Menu Toggle */}
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-1.5 sm:p-2 text-charcoal/80 hover:bg-brand-plum/5 rounded-xl transition-all focus:outline-none w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center cursor-pointer shrink-0"
+              className="md:hidden p-1.5 sm:p-2 text-charcoal/80 hover:bg-brand-plum/5 rounded-xl transition-all focus:outline-none w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center cursor-pointer shrink-0"
               aria-label="Toggle Menu"
             >
               <i className={`fas ${isMenuOpen ? 'fa-times text-base sm:text-lg' : 'fa-bars text-sm sm:text-base'} transition-all`} style={{ color: `var(--brand-primary)` }}></i>
