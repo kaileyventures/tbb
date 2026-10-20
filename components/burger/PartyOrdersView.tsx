@@ -56,63 +56,61 @@ export default function BurgerPartyOrdersView() {
 
   // Exact The Burger Bro Menu Items for Mains
   const MAIN_COURSES = [
-    { name: 'Aloo Tikki Burger', desc: 'Golden crisp spiced potato patty with house burger relish & onions', icon: 'fa-burger' },
-    { name: 'Oregano Burger', desc: 'Herb-infused crispy patty with Mediterranean oregano and cream mayo', icon: 'fa-burger' },
-    { name: 'Special Paneer Burger', desc: 'Fresh spiced paneer patty grilled golden with rich creamy dressing', icon: 'fa-burger' },
-    { name: 'The Burger Bro Spl. Burger', desc: 'Signature gourmet multi-layer veggie burger loaded with double sauce', icon: 'fa-burger' },
-    { name: 'Jumbo Double Tikki Burger', desc: 'Double stacked golden crispy vegetable patties with layered veggies', icon: 'fa-burger' },
-    { name: 'Cheese Margherita Pizza', desc: 'Classic Italian tomato herb sauce with pure molten mozzarella', icon: 'fa-pizza-slice' },
-    { name: 'Peppy Paneer Pizza', desc: 'Spiced paneer cubes, crisp capsicum, and red paprika on cheese crust', icon: 'fa-pizza-slice' },
-    { name: 'Mix Vegetable Pizza', desc: 'Farm bell peppers, onions, tomatoes, sweet corn, and mozzarella', icon: 'fa-pizza-slice' },
-    { name: 'The Burger Bro Spl. Pizza', desc: 'Chef specialty gourmet pizza with assorted exotic toppings & extra cheese', icon: 'fa-pizza-slice' },
-    { name: 'Pineapple Pizza', desc: 'Sweet golden pineapple paired with savory bubbling cheese sauce', icon: 'fa-pizza-slice' },
-    { name: 'Vegetable Grilled Sandwich', desc: 'Toasted bread packed with fresh veggies and spicy green chutney', icon: 'fa-bread-slice' },
-    { name: 'Tandoori Paneer Grilled Sandwich', desc: 'Smoky tandoori paneer slices grilled in crusty bread with cheese', icon: 'fa-bread-slice' },
-    { name: 'The Burger Bro Spl. Grilled Sandwich', desc: 'Chef triple-decker special loaded with paneer, double cheese & corn', icon: 'fa-bread-slice' },
-    { name: 'Wok Street Veg Noodles', desc: 'Classic Hakka noodles tossed with crunchy garden veggies & savory sauces', icon: 'fa-bowl-rice' },
-    { name: 'Veggie Marine', desc: 'Special submarine roll loaded with garden fresh veggies & house sauces', icon: 'fa-hotdog' },
-    { name: 'Cheese Stuffed Marine', desc: 'Extra cheesy submarine roll packed with melting mozzarella & herbs', icon: 'fa-hotdog' }
+    { name: 'Aloo Tikki Burger', desc: 'Golden crisp spiced potato patty with house burger relish & onions', icon: 'fa-burger', price: '40' },
+    { name: 'Oregano Burger', desc: 'Herb-infused crispy patty with Mediterranean oregano and cream mayo', icon: 'fa-burger', price: '50' },
+    { name: 'Special Paneer Burger', desc: 'Fresh spiced paneer patty grilled golden with rich creamy dressing', icon: 'fa-burger', price: '60' },
+    { name: 'The Burger Bro Spl. Burger', desc: 'Signature gourmet multi-layer veggie burger loaded with double sauce', icon: 'fa-burger', price: '70' },
+    { name: 'Jumbo Double Tikki Burger', desc: 'Double stacked golden crispy vegetable patties with layered veggies', icon: 'fa-burger', price: '90' },
+    { name: 'Cheese Margherita Pizza', desc: 'Classic Italian tomato herb sauce with pure molten mozzarella', icon: 'fa-pizza-slice', price: '120' },
+    { name: 'Peppy Paneer Pizza', desc: 'Spiced paneer cubes, crisp capsicum, and red paprika on cheese crust', icon: 'fa-pizza-slice', price: '180' },
+    { name: 'Mix Vegetable Pizza', desc: 'Farm bell peppers, onions, tomatoes, sweet corn, and mozzarella', icon: 'fa-pizza-slice', price: '180' },
+    { name: 'The Burger Bro Spl. Pizza', desc: 'Chef specialty gourmet pizza with assorted exotic toppings & extra cheese', icon: 'fa-pizza-slice', price: '200' },
+    { name: 'Pineapple Pizza', desc: 'Sweet golden pineapple paired with savory bubbling cheese sauce', icon: 'fa-pizza-slice', price: '160' },
+    { name: 'Vegetable Grilled Sandwich', desc: 'Toasted bread packed with fresh veggies and spicy green chutney', icon: 'fa-bread-slice', price: '120' },
+    { name: 'Tandoori Paneer Grilled Sandwich', desc: 'Smoky tandoori paneer slices grilled in crusty bread with cheese', icon: 'fa-bread-slice', price: '140' },
+    { name: 'The Burger Bro Spl. Grilled Sandwich', desc: 'Chef triple-decker special loaded with paneer, double cheese & corn', icon: 'fa-bread-slice', price: '150' },
+    { name: 'Wok Street Veg Noodles', desc: 'Classic Hakka noodles tossed with crunchy garden veggies & savory sauces', icon: 'fa-bowl-rice', price: '50' },
+    { name: 'Veggie Marine', desc: 'Special submarine roll loaded with garden fresh veggies & house sauces', icon: 'fa-hotdog', price: '70' },
+    { name: 'Cheese Stuffed Marine', desc: 'Extra cheesy submarine roll packed with melting mozzarella & herbs', icon: 'fa-hotdog', price: '90' }
   ];
 
   // Exact The Burger Bro Menu Items for Sides & Patties
   const SIDES_STARTERS = [
-    { name: 'Masala Fries', desc: 'Golden crispy French fries tossed in our zesty chatpata masala mix' },
-    { name: 'Peri Peri Fries', desc: 'Hot crispy potato fries dusted with fiery peri peri seasoning' },
-    { name: 'Potato Smiley', desc: 'Crispy, golden fried potato smileys loved by everyone' },
-    { name: 'Cheese Garlic Shots', desc: 'Crispy bite-sized potato garlic poppers oozing with molten cheese' },
-    { name: 'Aloo Patty', desc: 'Flaky baked golden bakery puff pastry stuffed with spiced potato filling' },
-    { name: 'Paneer Patty', desc: 'Flaky crust pastry puff filled with soft spiced paneer cubes & herbs' },
-    { name: 'Mushroom Patty', desc: 'Crispy layered puff pastry stuffed with seasoned sautéed mushrooms' },
-    { name: 'Sweet Corn Sandwich', desc: 'Plump golden sweet corn mixed with creamy spread in soft fresh bread' },
-    { name: 'Fresh Sandwich', desc: 'Soft bread sandwich layered with crunchy fresh garden vegetables' }
+    { name: 'Masala Fries', desc: 'Golden crispy French fries tossed in our zesty chatpata masala mix', price: '90' },
+    { name: 'Peri Peri Fries', desc: 'Hot crispy potato fries dusted with fiery peri peri seasoning', price: '100' },
+    { name: 'Potato Smiley', desc: 'Crispy, golden fried potato smileys loved by everyone', price: '100' },
+    { name: 'Cheese Garlic Shots', desc: 'Crispy bite-sized potato garlic poppers oozing with molten cheese', price: '120' },
+    { name: 'Aloo Patty', desc: 'Flaky baked golden bakery puff pastry stuffed with spiced potato filling', price: '15' },
+    { name: 'Paneer Patty', desc: 'Flaky crust pastry puff filled with soft spiced paneer cubes & herbs', price: '40' },
+    { name: 'Mushroom Patty', desc: 'Crispy layered puff pastry stuffed with seasoned sautéed mushrooms', price: '40' },
+    { name: 'Sweet Corn Sandwich', desc: 'Plump golden sweet corn mixed with creamy spread in soft fresh bread', price: '25' },
+    { name: 'Fresh Sandwich', desc: 'Soft bread sandwich layered with crunchy fresh garden vegetables', price: '20' }
   ];
 
   // Exact The Burger Bro Beverages, Cold Drinks, Shakes & Desserts
   const DRINKS_COOLERS = [
-    { name: 'Diet Coke / Pepsi', desc: 'Chilled cold drink can/bottle (All varieties available on request)' },
-    { name: 'Fruit Beer (Non-Alcoholic)', desc: 'Chilled bubbly apple fruit beer soda with rich foam & sweet fizz' },
-    { name: 'Masala Lemonade', desc: 'Tangy Indian spiced freshly squeezed lemonade with rock salt & mint' },
-    { name: 'Red Bull Energy Drink', desc: 'Chilled iconic can of energizing vitalizer drink' },
-    { name: 'Cold Coffee', desc: 'Cafe style rich whipped iced espresso blended with chilled milk & cream' },
-    { name: 'Oreo Cookies Shake', desc: 'Crushed chocolate Oreo cookies blended thick with vanilla cream' },
-    { name: 'Cold Chocolate Frappe', desc: 'Thick creamy chilled dark chocolate shake with chocolate drizzle' },
-    { name: 'Mango Frappe', desc: 'Rich thick mango shake crafted from sweet Alphonso mango puree' },
-    { name: 'Strawberry Frappe', desc: 'Luscious blended pink strawberry shake with rich sweet fruit aroma' },
-    { name: 'Butter Scotch Frappe', desc: 'Creamy caramel butterscotch shake loaded with crunchy praline' },
-    { name: 'Pineapple Frappe', desc: 'Chilled tropical blended yellow pineapple frappe with creamy milk' },
-    { name: 'Black Currant Frappe', desc: 'Exotic tangy-sweet wild black currant berries blended into violet cooler' },
-    { name: 'Fresh Muffins', desc: 'Soft and spongy sweet baked muffins in assorted flavors' },
-    { name: 'Pastries', desc: 'Daily fresh bakery pastries (Black Forest, Pineapple, Truffle)' }
+    { name: 'Diet Coke / Pepsi', desc: 'Chilled cold drink can/bottle (All varieties available on request)', price: 'MRP' },
+    { name: 'Fruit Beer (Non-Alcoholic)', desc: 'Chilled bubbly apple fruit beer soda with rich foam & sweet fizz', price: '40' },
+    { name: 'Masala Lemonade', desc: 'Tangy Indian spiced freshly squeezed lemonade with rock salt & mint', price: '40' },
+    { name: 'Red Bull Energy Drink', desc: 'Chilled iconic can of energizing vitalizer drink', price: 'MRP' },
+    { name: 'Cold Coffee', desc: 'Cafe style rich whipped iced espresso blended with chilled milk & cream', price: '80' },
+    { name: 'Oreo Cookies Shake', desc: 'Crushed chocolate Oreo cookies blended thick with vanilla cream', price: '70' },
+    { name: 'Cold Chocolate Frappe', desc: 'Thick creamy chilled dark chocolate shake with chocolate drizzle', price: '70' },
+    { name: 'Mango Frappe', desc: 'Rich thick mango shake crafted from sweet Alphonso mango puree', price: '60' },
+    { name: 'Strawberry Frappe', desc: 'Luscious blended pink strawberry shake with rich sweet fruit aroma', price: '50' },
+    { name: 'Butter Scotch Frappe', desc: 'Creamy caramel butterscotch shake loaded with crunchy praline', price: '60' },
+    { name: 'Pineapple Frappe', desc: 'Chilled tropical blended yellow pineapple frappe with creamy milk', price: '50' },
+    { name: 'Black Currant Frappe', desc: 'Exotic tangy-sweet wild black currant berries blended into violet cooler', price: '70' },
+    { name: 'Fresh Muffins', desc: 'Soft and spongy sweet baked muffins in assorted flavors', price: '20' },
+    { name: 'Pastries', desc: 'Daily fresh bakery pastries (Black Forest, Pineapple, Truffle)', price: 'As Per Flavour' }
   ];
 
   const SPICE_OPTIONS = ['Mild / Zero Chili', 'Medium Spicy', 'Extra Spicy Hot', 'Spicy on the Side'];
 
-  // Toggle multi-select
+  // Toggle multi-select (can unselect all, zero items allowed)
   const toggleSelection = (list: string[], setList: (items: string[]) => void, item: string) => {
     if (list.includes(item)) {
-      if (list.length > 1) {
-        setList(list.filter(i => i !== item));
-      }
+      setList(list.filter(i => i !== item));
     } else {
       setList([...list, item]);
     }
@@ -137,38 +135,123 @@ export default function BurgerPartyOrdersView() {
     allDrinks.push(`${customDrink.trim()} (Custom)`);
   }
 
+  // Helper to lookup item price
+  const getItemPrice = (itemName: string): string => {
+    const cleanName = itemName.replace(/\s*\(Custom\)$/, '');
+    const foundMain = MAIN_COURSES.find(m => m.name === cleanName);
+    if (foundMain) return foundMain.price;
+    const foundSide = SIDES_STARTERS.find(s => s.name === cleanName);
+    if (foundSide) return foundSide.price;
+    const foundDrink = DRINKS_COOLERS.find(d => d.name === cleanName);
+    if (foundDrink) return foundDrink.price;
+    return 'On Request';
+  };
+
+  const formatPriceBadge = (priceStr: string) => {
+    if (priceStr === 'MRP' || priceStr.toLowerCase().includes('flavour') || priceStr.toLowerCase().includes('request')) {
+      return priceStr;
+    }
+    return `₹${priceStr}`;
+  };
+
   const handleSendToWhatsApp = () => {
-    let msg = `*Captain Order Ticket (Bulk Party Feast) - The Burger Bro*\n\n`;
-    msg += `📋 *Party Scale:* ${effectivePartySize}\n`;
-    msg += `📍 *Order Type:* ${diningStyle}\n\n`;
+    const orderNumber = `TBB-ORD-${Math.floor(1000 + Math.random() * 9000)}`;
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
 
-    msg += `🍔 *Main Courses Ordered (${allMains.length}):*\n`;
-    allMains.forEach(m => { msg += `  • ${m}\n`; });
+    let msg = `================================\n`;
+    msg += `       *THE BURGER BRO*         \n`;
+    msg += `  *KITCHEN ORDER TICKET (KOT)*   \n`;
+    msg += `================================\n\n`;
 
-    if (allSides.length > 0) {
-      msg += `\n🍟 *Sides & Munchies (${allSides.length}):*\n`;
-      allSides.forEach(s => { msg += `  • ${s}\n`; });
-    }
-
-    if (allDrinks.length > 0) {
-      msg += `\n🥤 *Beverages & Coolers (${allDrinks.length}):*\n`;
-      allDrinks.forEach(d => { msg += `  • ${d}\n`; });
-    }
-
-    msg += `\n🌶️ *Kitchen Spice Level:* ${spicePreference}\n`;
+    msg += `🧾 *KOT No:* #${orderNumber}\n`;
+    msg += `📅 *Date:* ${dateStr} • ${timeStr}\n`;
+    msg += `👥 *Party Size:* ${effectivePartySize}\n`;
+    msg += `📍 *Order Type:* ${diningStyle}\n`;
 
     if (eventDate) {
-      msg += `📅 *Date of Event:* ${eventDate}\n`;
+      msg += `📆 *Serving Date:* ${eventDate}\n`;
     }
     if (deliverySlot.trim()) {
-      msg += `⏰ *Serving / Delivery Time:* ${deliverySlot.trim()}\n`;
+      msg += `⏰ *Serving Time:* ${deliverySlot.trim()}\n`;
     }
-    if (kitchenInstructions.trim()) {
-      msg += `👨‍🍳 *Special Instructions:* "${kitchenInstructions.trim()}"\n`;
+    msg += `🌶️ *Spice Level:* ${spicePreference}\n\n`;
+
+    msg += `--------------------------------\n`;
+    msg += `*QTY  ITEM DESCRIPTION       PRICE*\n`;
+    msg += `--------------------------------\n`;
+
+    let itemCounter = 1;
+    let estimatedSum = 0;
+    let hasVariablePrices = false;
+
+    // 1. Mains
+    if (allMains.length > 0) {
+      msg += `\n*--- [MAIN COURSES] ---*\n`;
+      allMains.forEach(item => {
+        const pr = getItemPrice(item);
+        const formatted = formatPriceBadge(pr);
+        const num = parseInt(pr, 10);
+        if (!isNaN(num)) {
+          estimatedSum += num;
+        } else {
+          hasVariablePrices = true;
+        }
+        msg += `${itemCounter.toString().padStart(2, '0')}. [ ] 1x ${item} (${formatted})\n`;
+        itemCounter++;
+      });
     }
 
-    msg += `\n*Kitchen Note:* 100% Vegetarian Fast Food kitchen.\n`;
-    msg += `Please confirm table order availability and final bill estimate!`;
+    // 2. Sides & Starters
+    if (allSides.length > 0) {
+      msg += `\n*--- [SIDES & STARTERS] ---*\n`;
+      allSides.forEach(item => {
+        const pr = getItemPrice(item);
+        const formatted = formatPriceBadge(pr);
+        const num = parseInt(pr, 10);
+        if (!isNaN(num)) {
+          estimatedSum += num;
+        } else {
+          hasVariablePrices = true;
+        }
+        msg += `${itemCounter.toString().padStart(2, '0')}. [ ] 1x ${item} (${formatted})\n`;
+        itemCounter++;
+      });
+    }
+
+    // 3. Drinks & Coolers
+    if (allDrinks.length > 0) {
+      msg += `\n*--- [BEVERAGES & SHAKES] ---*\n`;
+      allDrinks.forEach(item => {
+        const pr = getItemPrice(item);
+        const formatted = formatPriceBadge(pr);
+        const num = parseInt(pr, 10);
+        if (!isNaN(num)) {
+          estimatedSum += num;
+        } else {
+          hasVariablePrices = true;
+        }
+        msg += `${itemCounter.toString().padStart(2, '0')}. [ ] 1x ${item} (${formatted})\n`;
+        itemCounter++;
+      });
+    }
+
+    msg += `\n--------------------------------\n`;
+    msg += `📦 *TOTAL DISHES ORDERED:* ${allMains.length + allSides.length + allDrinks.length} items\n`;
+    if (estimatedSum > 0) {
+      msg += `💰 *ESTIMATED BASE TOTAL:* ₹${estimatedSum}${hasVariablePrices ? ' + MRP/Beverage' : ''}\n`;
+    }
+    msg += `--------------------------------\n\n`;
+
+    if (kitchenInstructions.trim()) {
+      msg += `👨‍🍳 *CHEF INSTRUCTIONS:*\n`;
+      msg += `👉 _"${kitchenInstructions.trim()}"_\n\n`;
+    }
+
+    msg += `🌱 *PURITY:* 100% Pure Vegetarian Kitchen\n`;
+    msg += `💬 _Please confirm kitchen prep availability & total final bill._\n`;
+    msg += `================================`;
 
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
   };
@@ -455,14 +538,26 @@ export default function BurgerPartyOrdersView() {
                     <span>1. Main Fast Food Courses</span>
                     <span className="text-[10px] font-bold text-accent-gold-dark lowercase">(tap to select multiple)</span>
                   </label>
-                  <span className="text-[11px] font-bold text-charcoal/50">
-                    {selectedMains.length} selected
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-charcoal/50">
+                      {selectedMains.length} selected
+                    </span>
+                    {selectedMains.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedMains([])}
+                        className="text-[10px] font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-0.5 rounded-md border border-red-200 transition-colors cursor-pointer"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-3">
                   {MAIN_COURSES.map((m) => {
                     const isChecked = selectedMains.includes(m.name);
+                    const formattedPrice = formatPriceBadge(m.price);
                     return (
                       <button
                         key={m.name}
@@ -476,7 +571,12 @@ export default function BurgerPartyOrdersView() {
                       >
                         <div>
                           <div className="flex items-center justify-between mb-2">
-                            <i className={`fas ${m.icon} text-brand-primary text-base`}></i>
+                            <div className="flex items-center gap-2">
+                              <i className={`fas ${m.icon} text-brand-primary text-base`}></i>
+                              <span className="text-[11px] font-black px-2 py-0.5 rounded-md bg-amber-100/80 text-amber-900 border border-amber-300/60">
+                                {formattedPrice}
+                              </span>
+                            </div>
                             <span className={`w-4 h-4 rounded-md flex items-center justify-center text-[10px] font-black ${
                               isChecked ? 'bg-brand-primary text-white' : 'border border-charcoal/20 bg-white'
                             }`}>
@@ -491,10 +591,11 @@ export default function BurgerPartyOrdersView() {
                           </p>
                         </div>
 
-                        <div className="mt-3 pt-2 border-t border-accent-gold/15 text-[10px] font-bold">
+                        <div className="mt-3 pt-2 border-t border-accent-gold/15 flex items-center justify-between text-[10px] font-bold">
                           <span className={isChecked ? 'text-brand-primary' : 'text-charcoal/40'}>
                             {isChecked ? '✓ Added to Ticket' : '+ Add Dish'}
                           </span>
+                          <span className="text-charcoal/60 font-black">{formattedPrice}</span>
                         </div>
                       </button>
                     );
@@ -529,14 +630,26 @@ export default function BurgerPartyOrdersView() {
                     <span>2. Sides & Starters</span>
                     <span className="text-[10px] font-bold text-accent-gold-dark lowercase">(optional, select multiple)</span>
                   </label>
-                  <span className="text-[11px] font-bold text-charcoal/50">
-                    {selectedSides.length} selected
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-charcoal/50">
+                      {selectedSides.length} selected
+                    </span>
+                    {selectedSides.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedSides([])}
+                        className="text-[10px] font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-0.5 rounded-md border border-red-200 transition-colors cursor-pointer"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                   {SIDES_STARTERS.map((s) => {
                     const isChecked = selectedSides.includes(s.name);
+                    const formattedPrice = formatPriceBadge(s.price);
                     return (
                       <button
                         key={s.name}
@@ -559,15 +672,21 @@ export default function BurgerPartyOrdersView() {
                               {isChecked ? '✓' : ''}
                             </span>
                           </div>
+                          <div className="mb-1.5">
+                            <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-100/80 text-amber-900 border border-amber-300/60 inline-block">
+                              {formattedPrice}
+                            </span>
+                          </div>
                           <p className="text-[10px] text-charcoal/60 leading-relaxed font-medium">
                             {s.desc}
                           </p>
                         </div>
 
-                        <div className="mt-2.5 pt-1.5 border-t border-accent-gold/15 text-[10px] font-bold">
+                        <div className="mt-2.5 pt-1.5 border-t border-accent-gold/15 flex items-center justify-between text-[10px] font-bold">
                           <span className={isChecked ? 'text-brand-primary' : 'text-charcoal/40'}>
                             {isChecked ? '✓ Added' : '+ Add Starter'}
                           </span>
+                          <span className="text-charcoal/60 font-black">{formattedPrice}</span>
                         </div>
                       </button>
                     );
@@ -634,13 +753,31 @@ export default function BurgerPartyOrdersView() {
 
               {/* Drinks Grid */}
               <div>
-                <label className="block text-xs font-extrabold uppercase tracking-wider text-charcoal/80 mb-2.5">
-                  Party Drinks & Coolers (Select Multiple)
-                </label>
+                <div className="flex items-center justify-between mb-2.5">
+                  <label className="text-xs font-extrabold uppercase tracking-wider text-charcoal/80 flex items-center gap-2">
+                    <span>Party Drinks & Coolers</span>
+                    <span className="text-[10px] font-bold text-accent-gold-dark lowercase">(optional, select multiple)</span>
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-charcoal/50">
+                      {selectedDrinks.length} selected
+                    </span>
+                    {selectedDrinks.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDrinks([])}
+                        className="text-[10px] font-bold text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 px-2 py-0.5 rounded-md border border-red-200 transition-colors cursor-pointer"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
+                </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                   {DRINKS_COOLERS.map((d) => {
                     const isChecked = selectedDrinks.includes(d.name);
+                    const formattedPrice = formatPriceBadge(d.price);
                     return (
                       <button
                         key={d.name}
@@ -663,15 +800,21 @@ export default function BurgerPartyOrdersView() {
                               {isChecked ? '✓' : ''}
                             </span>
                           </div>
+                          <div className="mb-1.5">
+                            <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-100/80 text-amber-900 border border-amber-300/60 inline-block">
+                              {formattedPrice}
+                            </span>
+                          </div>
                           <p className="text-[10px] text-charcoal/60 leading-relaxed font-medium">
                             {d.desc}
                           </p>
                         </div>
 
-                        <div className="mt-2.5 pt-1.5 border-t border-accent-gold/15 text-[10px] font-bold">
+                        <div className="mt-2.5 pt-1.5 border-t border-accent-gold/15 flex items-center justify-between text-[10px] font-bold">
                           <span className={isChecked ? 'text-brand-primary' : 'text-charcoal/40'}>
                             {isChecked ? '✓ Added' : '+ Add Drink'}
                           </span>
+                          <span className="text-charcoal/60 font-black">{formattedPrice}</span>
                         </div>
                       </button>
                     );
@@ -750,20 +893,38 @@ export default function BurgerPartyOrdersView() {
                     <h3 className="text-base sm:text-lg font-black text-charcoal font-serif-heading">
                       {effectivePartySize} • {diningStyle}
                     </h3>
-                    <div className="text-xs text-charcoal/80 font-medium space-y-1 pt-1.5">
-                      <p>🍔 <strong>Mains:</strong> {allMains.join(', ')}</p>
-                      {allSides.length > 0 && <p>🍟 <strong>Starters:</strong> {allSides.join(', ')}</p>}
-                      {allDrinks.length > 0 && <p>🥤 <strong>Drinks:</strong> {allDrinks.join(', ')}</p>}
+                    <div className="text-xs text-charcoal/80 font-medium space-y-1.5 pt-1.5">
+                      <p>🍔 <strong>Mains:</strong> {allMains.length > 0 ? allMains.map(m => `${m} (${formatPriceBadge(getItemPrice(m))})`).join(', ') : 'None'}</p>
+                      {allSides.length > 0 && <p>🍟 <strong>Starters:</strong> {allSides.map(s => `${s} (${formatPriceBadge(getItemPrice(s))})`).join(', ')}</p>}
+                      {allDrinks.length > 0 && <p>🥤 <strong>Drinks:</strong> {allDrinks.map(d => `${d} (${formatPriceBadge(getItemPrice(d))})`).join(', ')}</p>}
                       <p>🌶️ <strong>Spice:</strong> {spicePreference}</p>
                       {eventDate && <p>📅 <strong>Date:</strong> {eventDate} {deliverySlot ? `(${deliverySlot})` : ''}</p>}
                       {kitchenInstructions && <p>👨‍🍳 <strong>Kitchen Note:</strong> &quot;{kitchenInstructions}&quot;</p>}
                     </div>
                   </div>
 
-                  <div className="text-left sm:text-right shrink-0">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold">
+                  <div className="text-left sm:text-right shrink-0 flex flex-col sm:items-end gap-1.5">
+                    {(() => {
+                      const allItems = [...allMains, ...allSides, ...allDrinks];
+                      let sum = 0;
+                      let hasVar = false;
+                      allItems.forEach(it => {
+                        const pr = getItemPrice(it);
+                        const n = parseInt(pr, 10);
+                        if (!isNaN(n)) sum += n;
+                        else hasVar = true;
+                      });
+                      if (sum === 0 && allItems.length === 0) return null;
+                      return (
+                        <div className="px-3.5 py-1.5 rounded-xl bg-amber-500/15 border border-amber-500/30 text-amber-900">
+                          <span className="text-[10px] font-bold block uppercase tracking-wider text-amber-800">Est. Base Total</span>
+                          <span className="text-base font-black">₹{sum}{hasVar ? ' + MRP' : ''}</span>
+                        </div>
+                      );
+                    })()}
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold">
                       <i className="fab fa-whatsapp text-xs"></i>
-                      <span>Kitchen Price on WhatsApp</span>
+                      <span>WhatsApp Bill Confirmation</span>
                     </span>
                   </div>
                 </div>
