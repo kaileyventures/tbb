@@ -84,55 +84,6 @@ tbb/
 
 ---
 
-## 📐 System Flow & Data Lifecycle
-
-```mermaid
-flowchart TD
-    classDef userNode fill:#F59E0B,stroke:#D97706,stroke-width:2px,color:#FFFFFF,font-weight:bold;
-    classDef actionNode fill:#1E293B,stroke:#475569,stroke-width:1px,color:#F8FAFC;
-    classDef stateNode fill:#0F172A,stroke:#6366F1,stroke-width:2px,color:#818CF8;
-    classDef dbNode fill:#064E3B,stroke:#10B981,stroke-width:2px,color:#34D399,font-weight:bold;
-    classDef trashNode fill:#7F1D1D,stroke:#EF4444,stroke-width:2px,color:#FCA5A5;
-
-    User(["👤 Admin User"]) --> AuthCheck{"🔒 Authenticated?"}
-    
-    AuthCheck -- No --> PasswordScreen["Enter Admin Password<br/><i>NEXT_PUBLIC_ADMIN_PASSWORD</i>"]
-    PasswordScreen -- Validate --> AuthCheck
-
-    AuthCheck -- Yes --> Dashboard["🖥️ Modular Admin Dashboard (app/tbb/page.tsx)"]
-    
-    Dashboard --> QuickEntry["⚡ Quick Data Entry Bar<br/>(Sale / Purchase Inline)"]
-    Dashboard --> POSModal["🧾 POS Counter Sale<br/>(Cart & 3-Inch Thermal Slip)"]
-    Dashboard --> FullModals["📝 Detailed Modals<br/>(SaleModal / PurchaseModal)"]
-
-    QuickEntry --> SaveAction["Save Record"]
-    POSModal --> SaveAction
-    FullModals --> SaveAction
-
-    subgraph DataSync ["⚙️ State & Storage Synchronization"]
-        SaveAction --> LocalUpdate["Optimistic State Update<br/>(Immediate UI response)"]
-        LocalUpdate --> SupabaseCall["Supabase PostgreSQL Request<br/>(sales / purchases tables)"]
-        SupabaseCall --> ToastNotify["Pop Toast Feedback<br/>(Success / Warning fallback)"]
-    end
-
-    subgraph LedgerView ["📊 Ledger Table & Trash Lifecycle"]
-        Dashboard --> Filters["Filter & Sort Controls<br/>(Search, Month, Date, Category, Price)"]
-        Filters --> Table["Paginated Ledger Table"]
-        Table --> MoveTrash["Move to Trash"]
-        MoveTrash --> TrashBin["🗑️ 20-Day Trash Bin"]
-        TrashBin --> RestoreItem["Restore to Active Ledger"]
-        TrashBin --> AutoPurge["🔥 Auto-Purged after 20 days"]
-    end
-
-    class User userNode;
-    class QuickEntry,POSModal,FullModals,SaveAction,RestoreItem actionNode;
-    class Dashboard,Table,TrashBin stateNode;
-    class SupabaseCall dbNode;
-    class AutoPurge trashNode;
-```
-
----
-
 ## 🚀 Getting Started
 
 ### 1. Installation
