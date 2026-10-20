@@ -20,19 +20,29 @@
 
 ## 🌟 Key Features
 
-- **🧾 Royal POS Counter & 3-Inch Thermal Printing**: Touch-friendly bakery POS with fast cart interactions, custom dynamic product sizing by sales volume, instant bill numbering (`POS-YYMMDD-XXX`), today's bill history, and direct 80mm thermal receipt printing window.
-- **🏷️ Product & Price Register**: In-app catalog register to update default prices, add custom items, or remove products with live synchronization to the POS counter.
-- **⚡ Always-Active Quick Data Entry Bar**: Rapid sales or purchase entry without modal friction, featuring mode switching (`Sale` / `Purchase`), live total calculation, auto-suggestions, and non-blocking background saving states (`⏳ Saving...`).
-- **📊 Real-time Financial Metrics & Breakdowns**: Real-time calculation of Total Revenue (Sales), Total Expenses (Purchases), and Net Profit formatted in the **Indian Numbering System** (`₹1,00,00,000`), with detailed Payment Method and Category breakdowns.
-- **📅 Dual Timestamping System**:
-  - **`TXN DATE`**: Custom date selector for recording past or future transaction dates.
-  - **`ENTRY CREATED`**: Immutable system creation timestamp showing exact date & time (`DD-MMM-YYYY, hh:mm AM/PM`) recorded in the database.
-- **🔍 Advanced Multi-Filter & Search Engine**: Instant search across item names, bills, parties, notes, quick month selector, date range picker, category filter, supplier filter, payment mode/status filters, and min/max amount filters with active filter tags.
-- **🔄 Interactive Column Sorting**: Sort table columns (`Type`, `Txn Date`, `Item`, `Category`, `Qty`, `Unit Rate`, `Total Amount`, `Status`, `Entry Created`) in ascending (`▲`) or descending (`▼`) order with one click.
-- **🗑️ Trash Bin & Auto-Purging System**: Soft-delete entries safely into a dedicated Trash Bin with full **Restore** and **Permanent Erase** options. Entries are automatically purged after 20 days.
-- **📦 Multi-Unit Support**: Native dropdown selectors for standard culinary and packaging units: `Pcs`, `KG`, `Grams`, `Packet`, `Unit`, `Litre`, `Box`.
-- **📊 Multi-Sheet Excel Export**: Export clean Excel reports formatted in Indian currency format (`Sales Only`, `Purchases Only`, or `Both`).
-- **🔐 Protected Admin Authentication**: Password protected dashboard session preventing unauthorized access.
+### 🧾 1. POS Counter & Thermal Billing
+- **One-Tap Billing**: Touch-friendly product grid to quickly add items to the cart.
+- **3-Inch Thermal Receipts**: Print realistic 80mm receipts directly from any browser.
+- **Auto Bill Numbering**: Clean serial numbers generated automatically (`POS-YYMMDD-001`).
+- **Bill History & Re-print**: View today's past bills and re-print receipts anytime.
+
+### 💰 2. Sales & Expense Ledger
+- **Fast Inline Entry**: Add Sales or Purchases directly from the top bar in seconds without slow popups.
+- **Party & Supplier Tracking**: Keep clear records of suppliers, bills, and purchase costs.
+- **Multi-Unit Support**: Choose appropriate units like `Pcs`, `KG`, `Grams`, `Packet`, `Litre`, `Box`.
+- **Payment Method Tracking**: Log payments via UPI, Cash, Card, Bank Transfer, or POS.
+
+### 📈 3. Financial Analytics & Reports
+- **Real-Time Overview**: Live revenue, expense, and net profit calculations.
+- **Payment & Category Insights**: Visual breakdown showing where money is coming from and where it's going.
+- **Indian Currency Format**: All numbers formatted cleanly in Indian numbering (`₹1,00,000`).
+- **Excel Export**: Download formatted `.xlsx` reports (Sales only, Purchases only, or complete books).
+
+### 🔍 4. Search, Filtering & Data Safety
+- **Instant Search**: Find any transaction by item name, bill number, supplier, or note.
+- **Date & Month Filters**: Switch between current month, custom date ranges, or specific months in one click.
+- **Trash Bin Recovery**: Deleted entries are kept safe in Trash for 20 days before permanent deletion.
+- **Password Protected**: Secure dashboard access to protect business financial data.
 
 ---
 
