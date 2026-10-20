@@ -1203,6 +1203,13 @@ export default function AdminPage() {
   const existingPurchaseItemNames = Array.from(new Set(purchases.map(p => p.item_name)));
   const existingSuppliers = Array.from(new Set(purchases.map(p => p.supplier)));
 
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    sessionStorage.removeItem('tbb_admin_auth');
+    setInputPassword('');
+    triggerToast('🔒 Dashboard locked successfully.');
+  };
+
   if (!isAuthenticated) {
     return (
       <AdminAuth
@@ -1228,6 +1235,7 @@ export default function AdminPage() {
           setShowPosModal(true);
         }}
         onOpenEntryTypeModal={() => setShowEntryTypeModal(true)}
+        onLogout={handleLogout}
       />
 
       {/* Summary Analytics Metrics */}

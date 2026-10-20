@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Database, Eye, EyeOff, FileSpreadsheet, Printer, PlusCircle } from 'lucide-react';
+import { Database, Eye, EyeOff, FileSpreadsheet, Printer, PlusCircle, LogOut } from 'lucide-react';
 
 interface AdminHeaderProps {
   isSupabaseConnected: boolean;
@@ -10,6 +10,7 @@ interface AdminHeaderProps {
   onOpenExportModal: () => void;
   onOpenPosModal: () => void;
   onOpenEntryTypeModal: () => void;
+  onLogout: () => void;
 }
 
 export const AdminHeader: React.FC<AdminHeaderProps> = ({
@@ -18,7 +19,8 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   setShowSummaryMetrics,
   onOpenExportModal,
   onOpenPosModal,
-  onOpenEntryTypeModal
+  onOpenEntryTypeModal,
+  onLogout
 }) => {
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto 32px auto', display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '16px' }}>
@@ -135,6 +137,37 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
             transition: 'all 0.2s ease'
           }}>
           <PlusCircle size={16} /> Add New Entry
+        </button>
+
+        {/* Lock / Logout Button */}
+        <button
+          type="button"
+          onClick={onLogout}
+          title="Lock Dashboard / Logout"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: 'rgba(239, 68, 68, 0.12)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
+            color: '#f87171',
+            padding: '9px 14px',
+            borderRadius: '10px',
+            fontWeight: '700',
+            fontSize: '13px',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(239, 68, 68, 0.22)';
+            e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)';
+            e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.3)';
+          }}>
+          <LogOut size={15} />
+          <span>Lock / Logout</span>
         </button>
       </div>
     </div>
