@@ -64,12 +64,12 @@ export default function BurgerProductCard({ item, whatsappNumber }: { item: Menu
             </span>
           )}
           
-          {/* 100% Pure Veg leaf indicator */}
+          {/* 100% Pure Veg green square dot indicator */}
           <span 
-            className="absolute top-3 right-3 w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm shadow-sm flex items-center justify-center z-20 border border-green-500/30"
+            className="absolute top-3 right-3 w-5 h-5 rounded-sm bg-white/95 backdrop-blur-sm shadow-xs flex items-center justify-center z-20 border border-green-600"
             title="100% Pure Vegetarian"
           >
-            <i className="fas fa-leaf text-[10px] text-green-600"></i>
+            <span className="w-2.5 h-2.5 rounded-full bg-green-600"></span>
           </span>
         </div>
         

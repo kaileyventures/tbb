@@ -205,7 +205,7 @@ export default function Navbar() {
               >
                 <span className="text-base">🍔</span>
                 <span className="text-[11px] uppercase tracking-wide">The Burger Bro</span>
-                <span className="text-[8px] font-medium opacity-80">Burgers & Pizzas</span>
+                <span className="text-[8px] font-medium opacity-80">100% Pure Veg</span>
               </button>
             </div>
           </div>
