@@ -165,7 +165,7 @@ export const BURGER_MENU_ITEMS: MenuItem[] = [
     desc: 'Sweet golden pineapple cuts paired with savory cheese sauce for the classic sweet & savory experience.',
     category: 'Pizzas',
     price: '160',
-    image: 'https://images.unsplash.com/photo-1565299585323-38d6b0865b47?w=500&auto=format&fit=crop&q=80',
+    image: '/pineapple_pizza.jpg',
     variantOptions: [
       { label: 'Regular', price: '160' },
       { label: 'Family', price: '280' }
@@ -239,7 +239,7 @@ export const BURGER_MENU_ITEMS: MenuItem[] = [
     desc: 'Toasted bread packed with fresh cucumber, tomato, capsicum, onions, and spicy green chutney.',
     category: 'Grilled Sandwiches',
     price: '120',
-    image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?w=500&auto=format&fit=crop&q=80'
+    image: '/veg_grilled_sandwich.jpg'
   },
   {
     id: 'gsandwich-3',
@@ -343,7 +343,7 @@ export const BURGER_MENU_ITEMS: MenuItem[] = [
     desc: 'Golden crispy potato French fries tossed in our zesty chatpata masala mix.',
     category: 'Snacks',
     price: '90',
-    image: 'https://images.unsplash.com/photo-1576107232684-1279f3908594?w=500&auto=format&fit=crop&q=80'
+    image: '/masala_fries.jpg'
   },
   {
     id: 'snack-2',
@@ -521,7 +521,7 @@ export const BURGER_MENU_ITEMS: MenuItem[] = [
     desc: 'Soft and spongy sweet baked muffins in assorted chocolate and vanilla flavors.',
     category: 'Desserts',
     price: '20',
-    image: 'https://images.unsplash.com/photo-1586985289688-ca3cf47d3e6e?w=500&auto=format&fit=crop&q=80',
+    image: '/fresh_muffins.jpg',
     variantOptions: [
       { label: 'Small Muffin', price: '20' },
       { label: 'Large Muffin', price: '40' }
