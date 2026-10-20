@@ -11,8 +11,8 @@ export default function PrivacyPage() {
   const brandName = isBurger ? 'The Burger Bro' : 'The Baker Bro';
   const brandThemeColor = isBurger ? 'var(--brand-primary)' : '#7A1A40';
   const brandAccent = 'var(--brand-accent)';
-  const brandEmail = isBurger ? 'privacy@theburgerbro.in' : 'privacy@thebakerbro.in';
-  const brandPhone = '+91 88722 00030';
+  const brandEmail = 'thebakerbro17@gmail.com';
+  const brandPhone = '+91 8146767522';
   const brandCity = 'Jalandhar, Punjab, India';
 
   return (
