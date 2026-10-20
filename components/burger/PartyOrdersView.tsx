@@ -16,20 +16,21 @@ export default function BurgerPartyOrdersView() {
 
   // 2. Mains & Fast Food Courses (MULTI-SELECT with Quantities / Portions)
   const [selectedMains, setSelectedMains] = useState<string[]>([
-    'Flame-Grilled Sliders Box',
-    'Loaded Sourdough Pizzas'
+    'Aloo Tikki Burger',
+    'Cheese Margherita Pizza'
   ]);
   const [customMain, setCustomMain] = useState('');
 
   // 3. Sides & Starters (MULTI-SELECT)
   const [selectedSides, setSelectedSides] = useState<string[]>([
-    'Peri-Peri Crispy Fries Platter'
+    'Masala Fries'
   ]);
   const [customSide, setCustomSide] = useState('');
 
   // 4. Marine Drinks & Shakes (MULTI-SELECT)
   const [selectedDrinks, setSelectedDrinks] = useState<string[]>([
-    'Blue Lagoon Sparkling Pitcher'
+    'Diet Coke / Pepsi',
+    'Fruit Beer (Non-Alcoholic)'
   ]);
   const [customDrink, setCustomDrink] = useState('');
 
@@ -53,26 +54,55 @@ export default function BurgerPartyOrdersView() {
     'Bulk Catering Setup'
   ];
 
+  // Exact The Burger Bro Menu Items for Mains
   const MAIN_COURSES = [
-    { name: 'Flame-Grilled Sliders Box', desc: 'Mini gourmet veg cheese burgers with hot crisp buns', icon: 'fa-burger' },
-    { name: 'Loaded Sourdough Pizzas', desc: 'Assorted medium sourdough pizzas with double melted mozzarella', icon: 'fa-pizza-slice' },
-    { name: 'Grilled Multi-Decker Club Sandwiches', desc: 'Toasted triple-layer cheese club sandwich platters', icon: 'fa-bread-slice' },
-    { name: 'Wok Street Hakka Noodles Tub', desc: 'Tossed Szechuan veggies, scallions, and spicy street noodles', icon: 'fa-bowl-rice' },
-    { name: 'Crispy Veggie Sliders & Rolls', desc: 'Crispy paneer wraps & mini toasted bun rolls', icon: 'fa-hotdog' }
+    { name: 'Aloo Tikki Burger', desc: 'Golden crisp spiced potato patty with house burger relish & onions', icon: 'fa-burger' },
+    { name: 'Oregano Burger', desc: 'Herb-infused crispy patty with Mediterranean oregano and cream mayo', icon: 'fa-burger' },
+    { name: 'Special Paneer Burger', desc: 'Fresh spiced paneer patty grilled golden with rich creamy dressing', icon: 'fa-burger' },
+    { name: 'The Burger Bro Spl. Burger', desc: 'Signature gourmet multi-layer veggie burger loaded with double sauce', icon: 'fa-burger' },
+    { name: 'Jumbo Double Tikki Burger', desc: 'Double stacked golden crispy vegetable patties with layered veggies', icon: 'fa-burger' },
+    { name: 'Cheese Margherita Pizza', desc: 'Classic Italian tomato herb sauce with pure molten mozzarella', icon: 'fa-pizza-slice' },
+    { name: 'Peppy Paneer Pizza', desc: 'Spiced paneer cubes, crisp capsicum, and red paprika on cheese crust', icon: 'fa-pizza-slice' },
+    { name: 'Mix Vegetable Pizza', desc: 'Farm bell peppers, onions, tomatoes, sweet corn, and mozzarella', icon: 'fa-pizza-slice' },
+    { name: 'The Burger Bro Spl. Pizza', desc: 'Chef specialty gourmet pizza with assorted exotic toppings & extra cheese', icon: 'fa-pizza-slice' },
+    { name: 'Pineapple Pizza', desc: 'Sweet golden pineapple paired with savory bubbling cheese sauce', icon: 'fa-pizza-slice' },
+    { name: 'Vegetable Grilled Sandwich', desc: 'Toasted bread packed with fresh veggies and spicy green chutney', icon: 'fa-bread-slice' },
+    { name: 'Tandoori Paneer Grilled Sandwich', desc: 'Smoky tandoori paneer slices grilled in crusty bread with cheese', icon: 'fa-bread-slice' },
+    { name: 'The Burger Bro Spl. Grilled Sandwich', desc: 'Chef triple-decker special loaded with paneer, double cheese & corn', icon: 'fa-bread-slice' },
+    { name: 'Wok Street Veg Noodles', desc: 'Classic Hakka noodles tossed with crunchy garden veggies & savory sauces', icon: 'fa-bowl-rice' },
+    { name: 'Veggie Marine', desc: 'Special submarine roll loaded with garden fresh veggies & house sauces', icon: 'fa-hotdog' },
+    { name: 'Cheese Stuffed Marine', desc: 'Extra cheesy submarine roll packed with melting mozzarella & herbs', icon: 'fa-hotdog' }
   ];
 
+  // Exact The Burger Bro Menu Items for Sides & Patties
   const SIDES_STARTERS = [
-    { name: 'Peri-Peri Crispy Fries Platter', desc: 'Jumbo tub of golden salted fries tossed in fiery peri-peri' },
-    { name: 'Cheesy Garlic Bread Toasties', desc: 'Buttery toasted baguettes melted with herb mozzarella' },
-    { name: 'Spicy Potato Wedges & Jalapeno Dip', desc: 'Seasoned potato wedges paired with creamy chipotle relish' },
-    { name: 'Crispy Veg Spring Rolls Tub', desc: 'Crisp hand-rolled cabbage & sprout rolls with chili dip' }
+    { name: 'Masala Fries', desc: 'Golden crispy French fries tossed in our zesty chatpata masala mix' },
+    { name: 'Peri Peri Fries', desc: 'Hot crispy potato fries dusted with fiery peri peri seasoning' },
+    { name: 'Potato Smiley', desc: 'Crispy, golden fried potato smileys loved by everyone' },
+    { name: 'Cheese Garlic Shots', desc: 'Crispy bite-sized potato garlic poppers oozing with molten cheese' },
+    { name: 'Aloo Patty', desc: 'Flaky baked golden bakery puff pastry stuffed with spiced potato filling' },
+    { name: 'Paneer Patty', desc: 'Flaky crust pastry puff filled with soft spiced paneer cubes & herbs' },
+    { name: 'Mushroom Patty', desc: 'Crispy layered puff pastry stuffed with seasoned sautéed mushrooms' },
+    { name: 'Sweet Corn Sandwich', desc: 'Plump golden sweet corn mixed with creamy spread in soft fresh bread' },
+    { name: 'Fresh Sandwich', desc: 'Soft bread sandwich layered with crunchy fresh garden vegetables' }
   ];
 
+  // Exact The Burger Bro Beverages, Cold Drinks, Shakes & Desserts
   const DRINKS_COOLERS = [
-    { name: 'Blue Lagoon Sparkling Pitcher', desc: 'Oceanic citrus Curacao soda chilled on crushed mint & ice' },
-    { name: 'Fresh Mint Lime Mojito Dispenser', desc: 'Zesty muddled lime, mint leaves, and sweet cane cooler' },
-    { name: 'Tangy Masala Street Soda Tub', desc: 'Desi spiced carbonated refresher with chaat masala kick' },
-    { name: 'Iced Peach Lemonade Box', desc: 'Chilled sweet peach iced tea & sparkling lemonade' }
+    { name: 'Diet Coke / Pepsi', desc: 'Chilled cold drink can/bottle (All varieties available on request)' },
+    { name: 'Fruit Beer (Non-Alcoholic)', desc: 'Chilled bubbly apple fruit beer soda with rich foam & sweet fizz' },
+    { name: 'Masala Lemonade', desc: 'Tangy Indian spiced freshly squeezed lemonade with rock salt & mint' },
+    { name: 'Red Bull Energy Drink', desc: 'Chilled iconic can of energizing vitalizer drink' },
+    { name: 'Cold Coffee', desc: 'Cafe style rich whipped iced espresso blended with chilled milk & cream' },
+    { name: 'Oreo Cookies Shake', desc: 'Crushed chocolate Oreo cookies blended thick with vanilla cream' },
+    { name: 'Cold Chocolate Frappe', desc: 'Thick creamy chilled dark chocolate shake with chocolate drizzle' },
+    { name: 'Mango Frappe', desc: 'Rich thick mango shake crafted from sweet Alphonso mango puree' },
+    { name: 'Strawberry Frappe', desc: 'Luscious blended pink strawberry shake with rich sweet fruit aroma' },
+    { name: 'Butter Scotch Frappe', desc: 'Creamy caramel butterscotch shake loaded with crunchy praline' },
+    { name: 'Pineapple Frappe', desc: 'Chilled tropical blended yellow pineapple frappe with creamy milk' },
+    { name: 'Black Currant Frappe', desc: 'Exotic tangy-sweet wild black currant berries blended into violet cooler' },
+    { name: 'Fresh Muffins', desc: 'Soft and spongy sweet baked muffins in assorted flavors' },
+    { name: 'Pastries', desc: 'Daily fresh bakery pastries (Black Forest, Pineapple, Truffle)' }
   ];
 
   const SPICE_OPTIONS = ['Mild / Zero Chili', 'Medium Spicy', 'Extra Spicy Hot', 'Spicy on the Side'];
