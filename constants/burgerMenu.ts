@@ -554,7 +554,7 @@ export const BURGER_MENU_ITEMS: MenuItem[] = [
   },
   {
     id: 'dessert-5',
-    name: 'Pastries As Per Flavour',
+    name: 'Pastries',
     desc: 'Daily fresh pastries in Black Forest, Pineapple, Truffle and Red Velvet slices.',
     category: 'Desserts',
     price: 'As Per Flavour',
