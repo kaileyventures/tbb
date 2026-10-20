@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { Printer, Tag, X, Search, ShoppingCart, FileSpreadsheet, Plus, Minus } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { Printer, Tag, X, Search, ShoppingCart, FileSpreadsheet, Plus, Minus, Keyboard } from 'lucide-react';
 import CustomDatePicker from '@/components/CustomDatePicker';
 import { formatDateFormatted, formatIndianCurrency } from '../adminUtils';
 
@@ -60,6 +60,100 @@ export const PosModal: React.FC<PosModalProps> = ({
   lastPrintedBill,
   onOpenPriceRegister
 }) => {
+  const [activeItemName, setActiveItemName] = useState<string | null>(null);
+
+  // Compute filtered catalog for keyboard shortcut indexing
+  const filteredCatalog = posCatalog.filter(p => {
+    const matchesSearch = !posSearchTerm || p.name.toLowerCase().includes(posSearchTerm.toLowerCase());
+    const matchesCat = posSelectedCategory === 'all' || p.category === posSelectedCategory;
+    return matchesSearch && matchesCat;
+  });
+
+  // Keep activeItemName synced: if activeItem is not in cart, fallback to last item in cart or null
+  useEffect(() => {
+    if (activeItemName && !posCart.some(i => i.name === activeItemName)) {
+      if (posCart.length > 0) {
+        setActiveItemName(posCart[posCart.length - 1].name);
+      } else {
+        setActiveItemName(null);
+      }
+    } else if (!activeItemName && posCart.length > 0) {
+      setActiveItemName(posCart[posCart.length - 1].name);
+    }
+  }, [posCart, activeItemName]);
+
+  // Keyboard shortcut listener: 1-9 & 0 for product select, ArrowUp/ArrowDown for qty, NumpadEnter for Save & Print
+  useEffect(() => {
+    if (!showPosModal) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // If user is currently typing in an input or select box, don't hijack number keys
+      const target = e.target as HTMLElement | null;
+      const isInput = target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.tagName === 'SELECT');
+
+      // Numeric Numpad Enter / Regular Enter on modal level
+      if (e.code === 'NumpadEnter' || (e.key === 'Enter' && !isInput)) {
+        e.preventDefault();
+        if (posCart.length > 0 && !isProcessingPos) {
+          handleSaveAndPrintPos(true);
+        }
+        return;
+      }
+
+      // If user is typing in search input, allow typing numbers and text normally
+      if (isInput) return;
+
+      // 1-9 and 0 shortcuts for the first 10 products
+      // Key '1' -> index 0, '2' -> index 1, ..., '9' -> index 8, '0' -> index 9
+      const key = e.key;
+      let targetIndex = -1;
+      if (key >= '1' && key <= '9') {
+        targetIndex = parseInt(key, 10) - 1;
+      } else if (key === '0') {
+        targetIndex = 9; // 10th product
+      }
+
+      if (targetIndex >= 0 && targetIndex < filteredCatalog.length) {
+        e.preventDefault();
+        const targetProduct = filteredCatalog[targetIndex];
+        const isAlreadyInCart = posCart.some(i => i.name === targetProduct.name);
+        
+        if (!isAlreadyInCart) {
+          // Select product
+          handleTogglePosItem(targetProduct);
+          setActiveItemName(targetProduct.name);
+        } else {
+          // If already selected, setting it as active target or increasing qty
+          setActiveItemName(targetProduct.name);
+        }
+        return;
+      }
+
+      // ArrowUp to increase quantity of active item
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const targetName = activeItemName || (posCart.length > 0 ? posCart[posCart.length - 1].name : null);
+        if (targetName) {
+          updatePosQty(targetName, 1);
+        }
+        return;
+      }
+
+      // ArrowDown to decrease quantity of active item (zero unselects)
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const targetName = activeItemName || (posCart.length > 0 ? posCart[posCart.length - 1].name : null);
+        if (targetName) {
+          updatePosQty(targetName, -1);
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showPosModal, filteredCatalog, posCart, activeItemName, isProcessingPos, handleTogglePosItem, updatePosQty, handleSaveAndPrintPos]);
+
   if (!showPosModal) return null;
 
   return (
@@ -282,9 +376,14 @@ export const PosModal: React.FC<PosModalProps> = ({
               </select>
             </div>
 
-            {/* Prompt instructions */}
+            {/* Prompt instructions with Shortcut Guide */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#94a3b8' }}>
-              <span>Tap a product to select (<b>highlighted</b>). Tap again to unselect & remove.</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <Keyboard size={13} style={{ color: '#a78bfa' }} />
+                <span>
+                  Keys <b>[1-9, 0]</b> select • <b>[↑ / ↓]</b> qty • <b>[Enter]</b> Save & Print
+                </span>
+              </div>
               <span style={{ color: '#c4b5fd', fontWeight: '700' }}>{posCart.length} item(s) in slip</span>
             </div>
 
@@ -298,15 +397,14 @@ export const PosModal: React.FC<PosModalProps> = ({
               alignContent: 'start',
               padding: '6px 4px 12px 2px'
             }}>
-              {posCatalog
-                .filter(p => {
-                  const matchesSearch = !posSearchTerm || p.name.toLowerCase().includes(posSearchTerm.toLowerCase());
-                  const matchesCat = posSelectedCategory === 'all' || p.category === posSelectedCategory;
-                  return matchesSearch && matchesCat;
-                })
+              {filteredCatalog
                 .map((product, index) => {
                   const cartItem = posCart.find(i => i.name === product.name);
                   const isSelected = Boolean(cartItem);
+                  const isActiveTarget = isSelected && activeItemName === product.name;
+
+                  // First 10 items have keyboard shortcuts: 1-9 for indices 0-8, 0 for index 9
+                  const shortcutKey = index < 9 ? `${index + 1}` : index === 9 ? '0' : null;
 
                   const isTop2 = index < 2;
                   const isNext4 = index >= 2 && index < 6;
@@ -321,20 +419,27 @@ export const PosModal: React.FC<PosModalProps> = ({
                       onClick={() => {
                         if (!isSelected) {
                           handleTogglePosItem(product);
+                          setActiveItemName(product.name);
+                        } else {
+                          setActiveItemName(product.name);
                         }
                       }}
                       style={{
                         gridColumn: gridColSpan,
                         minHeight: minHeight,
                         background: isSelected
-                          ? 'linear-gradient(145deg, rgba(139, 92, 246, 0.35) 0%, rgba(109, 40, 217, 0.25) 100%)'
+                          ? isActiveTarget
+                            ? 'linear-gradient(145deg, rgba(147, 51, 234, 0.45) 0%, rgba(109, 40, 217, 0.35) 100%)'
+                            : 'linear-gradient(145deg, rgba(139, 92, 246, 0.35) 0%, rgba(109, 40, 217, 0.25) 100%)'
                           : isTop2
                             ? 'linear-gradient(145deg, rgba(245, 158, 11, 0.08) 0%, rgba(255, 255, 255, 0.03) 100%)'
                             : isNext4
                               ? 'linear-gradient(145deg, rgba(99, 102, 241, 0.06) 0%, rgba(255, 255, 255, 0.02) 100%)'
                               : 'linear-gradient(145deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%)',
                         border: isSelected
-                          ? '2px solid #a855f7'
+                          ? isActiveTarget
+                            ? '2px solid #c084fc'
+                            : '2px solid #a855f7'
                           : isTop2
                             ? '1.5px solid rgba(245, 158, 11, 0.35)'
                             : isNext4
@@ -350,7 +455,9 @@ export const PosModal: React.FC<PosModalProps> = ({
                         transition: 'all 0.15s ease',
                         position: 'relative',
                         boxShadow: isSelected
-                          ? '0 4px 14px rgba(139, 92, 246, 0.25)'
+                          ? isActiveTarget
+                            ? '0 0 0 2px rgba(192, 132, 252, 0.5), 0 4px 16px rgba(139, 92, 246, 0.35)'
+                            : '0 4px 14px rgba(139, 92, 246, 0.25)'
                           : 'none',
                         userSelect: 'none'
                       }}
@@ -412,12 +519,12 @@ export const PosModal: React.FC<PosModalProps> = ({
                         </button>
                       )}
 
-                      {/* Top Category Tag & Name (Clickable to toggle if not selected) */}
+                      {/* Top Category Tag, Shortcut Key Badge & Name */}
                       <div 
                         style={{ cursor: isSelected ? 'pointer' : 'inherit' }}
                         onClick={() => {
                           if (isSelected) {
-                            // If selected, clicking title/top area can also toggle or increment
+                            setActiveItemName(product.name);
                             handleTogglePosItem(product);
                           }
                         }}
@@ -433,6 +540,39 @@ export const PosModal: React.FC<PosModalProps> = ({
                           }}>
                             {product.category}
                           </span>
+
+                          {/* Keyboard Serial Number Shortcut Badge (1 to 9, and 0 for 10) */}
+                          {shortcutKey !== null && (
+                            <span 
+                              title={`Press key "${shortcutKey}" to select`}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                minWidth: isTop2 ? '20px' : '18px',
+                                height: isTop2 ? '20px' : '18px',
+                                padding: '0 4px',
+                                borderRadius: '5px',
+                                background: isSelected 
+                                  ? isActiveTarget 
+                                    ? 'rgba(255, 255, 255, 0.95)' 
+                                    : 'rgba(255, 255, 255, 0.2)' 
+                                  : 'rgba(255, 255, 255, 0.08)',
+                                border: isSelected 
+                                  ? isActiveTarget 
+                                    ? '1px solid #fff' 
+                                    : '1px solid rgba(255, 255, 255, 0.4)' 
+                                  : '1px solid rgba(255, 255, 255, 0.15)',
+                                color: isSelected ? (isActiveTarget ? '#7e22ce' : '#fff') : '#94a3b8',
+                                fontSize: isTop2 ? '11px' : '10px',
+                                fontWeight: '900',
+                                fontFamily: 'monospace',
+                                marginRight: isSelected ? (isTop2 ? '26px' : '22px') : '0'
+                              }}
+                            >
+                              {shortcutKey}
+                            </span>
+                          )}
                         </div>
 
                         {/* Product Name */}
