@@ -50,19 +50,12 @@ export default function BakerAboutView() {
             ></div>
             
             <div className="relative z-10 flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-6 md:gap-10">
-              <div className="w-24 h-24 md:w-32 md:h-32 shrink-0 bg-[#FAF6F0] rounded-full flex items-center justify-center text-accent-gold border-2 border-accent-gold/30 shadow-lg overflow-hidden relative">
-                <div className="absolute inset-0 bg-brand-plum/5"></div>
-                {/* Handcrafted Hat Vector illustration */}
-                <svg className="w-12 h-12 md:w-16 md:h-16 relative z-10" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M18 42C18 33.163 24.268 26 32 26C39.732 26 46 33.163 46 42" stroke={BRAND_PRIMARY} strokeWidth="3" strokeLinecap="round"/>
-                  <path d="M22 29.5C18.5 29.5 15.5 32.5 15.5 36C15.5 39.5 18.5 42.5 22 42.5" stroke={BRAND_PRIMARY} strokeWidth="3" strokeLinecap="round"/>
-                  <path d="M42 29.5C45.5 29.5 48.5 32.5 48.5 36C48.5 39.5 45.5 42.5 42 42.5" stroke={BRAND_PRIMARY} strokeWidth="3" strokeLinecap="round"/>
-                  <path d="M32 12C25.5 12 21 16.5 21 23C21 23.5 21.5 24 22 24C22.5 24 23 23.5 23 23C23 17.5 27 14 32 14C37 14 41 17.5 41 23C41 23.5 41.5 24 42 24C42.5 24 43 23.5 43 23C43 16.5 38.5 12 32 12Z" fill={BRAND_PRIMARY}/>
-                  <rect x="20" y="42" width="24" height="8" rx="2" fill={BRAND_PRIMARY} stroke={BRAND_PRIMARY} strokeWidth="2"/>
-                  <line x1="26" y1="42" x2="26" y2="50" stroke="#FAF6F0" strokeWidth="2"/>
-                  <line x1="32" y1="42" x2="32" y2="50" stroke="#FAF6F0" strokeWidth="2"/>
-                  <line x1="38" y1="42" x2="38" y2="50" stroke="#FAF6F0" strokeWidth="2"/>
-                </svg>
+              <div className="w-24 h-24 md:w-32 md:h-32 shrink-0 bg-[#FAF6F0] rounded-full flex items-center justify-center border-2 border-accent-gold/40 shadow-lg overflow-hidden relative group-hover:scale-105 transition-transform duration-300">
+                <img 
+                  src="/chef_gurdeep.png" 
+                  alt="Head Baker Gurdeep - The Baker Bro" 
+                  className="w-full h-full object-cover object-top"
+                />
               </div>
               
               <div className="flex-1">
