@@ -1,7 +1,5 @@
-'use client';
-
 import React from 'react';
-import { Database, Eye, EyeOff, FileSpreadsheet, Printer, PlusCircle, LogOut } from 'lucide-react';
+import { Database, Eye, EyeOff, FileSpreadsheet, Printer, LogOut } from 'lucide-react';
 
 interface AdminHeaderProps {
   isSupabaseConnected: boolean;
@@ -9,7 +7,6 @@ interface AdminHeaderProps {
   setShowSummaryMetrics: React.Dispatch<React.SetStateAction<boolean>>;
   onOpenExportModal: () => void;
   onOpenPosModal: () => void;
-  onOpenEntryTypeModal: () => void;
   onLogout: () => void;
 }
 
@@ -19,7 +16,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
   setShowSummaryMetrics,
   onOpenExportModal,
   onOpenPosModal,
-  onOpenEntryTypeModal,
   onLogout
 }) => {
   return (
@@ -117,26 +113,6 @@ export const AdminHeader: React.FC<AdminHeaderProps> = ({
             e.currentTarget.style.boxShadow = '0 4px 14px rgba(139, 92, 246, 0.4)';
           }}>
           <Printer size={16} /> POS Counter Sale
-        </button>
-
-        <button
-          onClick={onOpenEntryTypeModal}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-            color: '#fff',
-            border: 'none',
-            padding: '9px 16px',
-            borderRadius: '10px',
-            fontWeight: '700',
-            fontSize: '13px',
-            cursor: 'pointer',
-            boxShadow: '0 4px 14px rgba(59, 130, 246, 0.35)',
-            transition: 'all 0.2s ease'
-          }}>
-          <PlusCircle size={16} /> Add New Entry
         </button>
 
         {/* Lock / Logout Button */}

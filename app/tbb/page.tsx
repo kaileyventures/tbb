@@ -1234,7 +1234,6 @@ export default function AdminPage() {
           setPosDate(new Date().toISOString().slice(0, 10));
           setShowPosModal(true);
         }}
-        onOpenEntryTypeModal={() => setShowEntryTypeModal(true)}
         onLogout={handleLogout}
       />
 
