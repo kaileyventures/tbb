@@ -6,380 +6,647 @@ export default function BakerCustomCakesView() {
   const BRAND_COLOR = '#7A1A40'; // Baker Plum
   const ACCENT_COLOR = 'var(--brand-accent)';
 
-  // States for interactive customizer selection
-  const [option1, setOption1] = useState('Single Tier Round');
-  const [option2, setOption2] = useState('Minimalist Gold Foil');
-  const [option3, setOption3] = useState('Belgian Chocolate Truffle');
+  // Guided wizard step state: 1 -> 2 -> 3
+  const [currentStep, setCurrentStep] = useState(1);
 
-  const OPTIONS_1 = [
-    { name: 'Single Tier Round', desc: 'Elegant single layer custom cake (serves 8-12)', price: 1499, emoji: '🎂' },
-    { name: 'Double Tier Round', desc: 'Grand two-layer celebration cake (serves 20-30)', price: 2999, emoji: '🍰' },
-    { name: 'Heart Shaped', desc: 'Decadent heart-cut custom frosted cake (serves 8-12)', price: 1699, emoji: '💖' },
-    { name: 'Square Plaque', desc: 'Modern geometric sheet cake style (serves 15-20)', price: 1599, emoji: '🔳' }
+  // 1. Weight & Portion States (Pills + Custom Input)
+  const [selectedWeight, setSelectedWeight] = useState('1 Kg');
+  const [customWeight, setCustomWeight] = useState('');
+  const [selectedTiers, setSelectedTiers] = useState('Single Tier');
+
+  // 2. Shape Selection (Pills + Custom Input)
+  const [selectedShape, setSelectedShape] = useState('Classic Round');
+  const [customShape, setCustomShape] = useState('');
+
+  // 3. Flavor Selection (Pills + Custom Input)
+  const [selectedFlavor, setSelectedFlavor] = useState('Belgian Chocolate Truffle');
+  const [customFlavor, setCustomFlavor] = useState('');
+
+  // 4. Theme & Event Details
+  const [selectedTheme, setSelectedTheme] = useState('Minimalist Gold Foil');
+  const [customTheme, setCustomTheme] = useState('');
+  const [cakeMessage, setCakeMessage] = useState('');
+  const [occasionDate, setOccasionDate] = useState('');
+
+  // Presets for quick selection
+  const WEIGHT_PRESETS = [
+    { label: '0.5 Kg', serves: '3 - 4 guests' },
+    { label: '1 Kg', serves: '6 - 8 guests' },
+    { label: '1.5 Kg', serves: '10 - 12 guests' },
+    { label: '2 Kg', serves: '14 - 18 guests' },
+    { label: '3 Kg', serves: '20 - 25 guests' },
+    { label: '4+ Kg (Grand)', serves: '30+ guests' }
   ];
 
-  const OPTIONS_2 = [
-    { name: 'Minimalist Gold Foil', desc: 'Metallic gold paint, abstract brush strokes, elegant look', price: 500, emoji: '✨' },
-    { name: 'Gourmet Fresh Floral', desc: 'Ornate design topped with organic pesticide-free roses', price: 800, emoji: '🌸' },
-    { name: '3D Kids Character', desc: 'Custom fondant toy designs, balloons, and flags', price: 1200, emoji: '🧸' },
-    { name: 'Comic / Cartoon Outline', desc: 'Trendy 2D hand-drawn outline pop-art aesthetic', price: 600, emoji: '✏️' }
+  const TIER_OPTIONS = ['Single Tier', '2 Tiers', '3 Tiers', 'Tall / Bento Style'];
+
+  const SHAPE_PRESETS = [
+    { name: 'Classic Round', icon: 'fa-circle', desc: 'Timeless round shape with smooth finish' },
+    { name: 'Heart Shaped', icon: 'fa-heart', desc: 'Romantic silhouette contoured to perfection' },
+    { name: 'Square / Geometric', icon: 'fa-square', desc: 'Modern sharp corners & clean borders' },
+    { name: 'Number / Alphabet Cut', icon: 'fa-hashtag', desc: 'Custom shaped like age or initials (e.g. 25, S)' },
+    { name: 'Multi-Tier Sculpted', icon: 'fa-crown', desc: 'Stacked tiered architectural bakes' }
   ];
 
-  const OPTIONS_3 = [
-    { name: 'Belgian Chocolate Truffle', desc: 'Premium imported cacao, dense fudge crumb layers', price: 400, emoji: '🍫' },
-    { name: 'Rich Red Velvet', desc: 'Crimson cocoa sponge with whipped cream cheese filling', price: 400, emoji: '🔴' },
-    { name: 'Fresh Seasonal Fruit', desc: 'Vanilla custard sponge packed with local summer fruits', price: 300, emoji: '🍓' },
-    { name: 'Classic Butterscotch', desc: 'Caramelized crunch, praline chunks, rich cream layers', price: 200, emoji: '🍯' }
+  const FLAVOR_PRESETS = [
+    { name: 'Belgian Chocolate Truffle', tag: 'Bestseller', desc: 'Dense dark cocoa fudge with silky ganache' },
+    { name: 'Rich Red Velvet Cheese', tag: 'Classic', desc: 'Crimson cocoa sponge with whipped cream cheese' },
+    { name: 'Fresh Seasonal Fruit', tag: 'Light & Fresh', desc: 'Vanilla sponge loaded with seasonal fruit cuts' },
+    { name: 'Lotus Biscoff Crunch', tag: 'Trending', desc: 'Belgian speculoos spread & caramel biscuit crumble' },
+    { name: 'Royal Butterscotch Praline', tag: 'Crunchy', desc: 'Golden caramel glaze with handmade nut praline' },
+    { name: 'Blueberry Cheesecake Cream', tag: 'Gourmet', desc: 'Whipped vanilla cream with wild blueberry compote' },
+    { name: 'Dutch Chocolate Hazelnut', tag: 'Nutty', desc: 'Nutella-infused ganache with roasted hazelnut crunch' },
+    { name: 'Rasmalai / Indian Fusion', tag: 'Festive', desc: 'Cardamom saffron sponge soaked in sweet milk rabdi' }
   ];
 
-  const item1 = OPTIONS_1.find(o => o.name === option1) || OPTIONS_1[0];
-  const item2 = OPTIONS_2.find(o => o.name === option2) || OPTIONS_2[0];
-  const item3 = OPTIONS_3.find(o => o.name === option3) || OPTIONS_3[0];
-  const estimatedTotal = item1.price + item2.price + item3.price;
+  const THEME_PRESETS = [
+    { name: 'Minimalist Gold Foil', desc: 'Pastel palette with edible gold leaf foil brushstrokes' },
+    { name: 'Fresh Floral Elegance', desc: 'Natural fresh roses, baby breaths & botanical touch' },
+    { name: '3D Character / Kids Theme', desc: 'Handcrafted toys, superhero, or cartoon figurines' },
+    { name: 'Vintage Lambeth Piping', desc: 'Victorian ornate frills, swirls, and intricate borders' },
+    { name: 'Edible Photo Sugar Print', desc: 'High-definition printed edible photo sheet' },
+    { name: 'I Have Instagram / Pinterest Photos', desc: 'Send your exact reference photo on WhatsApp!' }
+  ];
 
-  const handleCustomOrder = () => {
-    const message = `Hi The Baker Bro,\n\nI'm interested in ordering a Custom Cake. Can you please share the process and pricing?`;
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank');
-  };
+  // Resolved final values
+  const effectiveWeight = selectedWeight === 'Custom' 
+    ? (customWeight.trim() ? `${customWeight.trim()} (Custom)` : 'Custom Weight')
+    : selectedWeight;
 
-  const handleCompileDesignOrder = () => {
-    const message = `Hi The Baker Bro,\n\nI'm interested in booking a Custom Cake with these configurations:\n- Structure: *${option1}* (₹${item1.price})\n- Design Theme: *${option2}* (₹${item2.price})\n- Flavor: *${option3}* (₹${item3.price})\n\n*Estimated Total: ₹${estimatedTotal}*\n\nPlease let me know availability and pricing.`;
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, '_blank');
-  };
+  const effectiveShape = selectedShape === 'Custom' 
+    ? (customShape.trim() ? `${customShape.trim()} (Custom)` : 'Custom Shape')
+    : selectedShape;
 
-  const STEPS = [
-    {
-      step: '01',
-      title: 'Consult & Sketch',
-      desc: 'Share your mood board, color swatches, or reference photos. Chef Gurdeep maps out the ideal design matching your theme.',
-      icon: 'fa-pencil-ruler'
-    },
-    {
-      step: '02',
-      title: 'Flavors & Details',
-      desc: 'Select from Belgian chocolate, fresh local seasonal fruits, or custom fillings, and confirm size and serving specifications.',
-      icon: 'fa-mortar-pestle'
-    },
-    {
-      step: '03',
-      title: 'Artisanal Handcrafting',
-      desc: 'The cake is custom-baked, hand-sculpted, and meticulously frosted, then delivered carefully inside Jalandhar limits.',
-      icon: 'fa-hat-chef'
+  const effectiveFlavor = selectedFlavor === 'Custom' 
+    ? (customFlavor.trim() ? `${customFlavor.trim()} (Custom)` : 'Custom Flavor')
+    : selectedFlavor;
+
+  const effectiveTheme = selectedTheme === 'Custom'
+    ? (customTheme.trim() ? `${customTheme.trim()} (Custom)` : 'Custom Theme')
+    : selectedTheme;
+
+  const handleSendToWhatsApp = () => {
+    let msg = `*New Custom Cake Enquiry - The Baker Bro*\n\n`;
+    msg += `⚖️ *Weight / Size:* ${effectiveWeight} (${selectedTiers})\n`;
+    msg += `📐 *Cake Shape:* ${effectiveShape}\n`;
+    msg += `🍫 *Flavor Choice:* ${effectiveFlavor}\n`;
+    msg += `🎨 *Design Theme:* ${effectiveTheme}\n`;
+    if (cakeMessage.trim()) {
+      msg += `✍️ *Message on Cake:* "${cakeMessage.trim()}"\n`;
     }
-  ];
+    if (occasionDate) {
+      msg += `📅 *Date of Event:* ${occasionDate}\n`;
+    }
+    msg += `\n*Purity:* 100% Eggless Pure Veg\n`;
+    msg += `\nPlease let me know availability and pricing!`;
 
-  const currentYear = new Date().getFullYear();
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
+  const handleDirectWhatsAppConsult = () => {
+    const msg = `Hi The Baker Bro,\n\nI want to discuss a custom cake order for my celebration in Jalandhar. Can you please guide me with ideas and pricing?`;
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
 
   return (
-    <div className="min-h-screen pb-24 overflow-hidden relative z-10 bg-cream-bg text-charcoal transition-colors duration-500">
+    <div className="min-h-screen pb-24 overflow-hidden relative z-10 bg-cream-bg text-charcoal">
       
-      {/* Ambient background decoration shapes */}
+      {/* Ambient background decoration */}
       <div className="absolute right-[-10%] top-[5%] w-96 h-96 opacity-[0.03] pointer-events-none float-animation">
         <i className="fas text-[14rem] fa-birthday-cake" style={{ color: ACCENT_COLOR }}></i>
       </div>
-      <div className="absolute left-[-5%] top-[40%] w-72 h-72 opacity-[0.02] pointer-events-none float-animation" style={{ animationDelay: '-3s' }}>
-        <i className="fas text-[10rem] fa-seedling" style={{ color: BRAND_COLOR }}></i>
-      </div>
 
-      {/* Hero Section */}
-      <section className="relative pt-16 pb-12 md:pt-28 md:pb-16 px-4 text-center">
-        <div className="max-w-4xl mx-auto">
-          <span 
-            className="inline-flex items-center py-1.5 px-4 rounded-full font-bold text-[10px] uppercase tracking-widest mb-6 border shadow-sm bg-brand-plum/5 text-brand-plum border-accent-gold/40"
-          >
-            Dream It, We Bake It
-          </span>
-          
-          <h1 className="text-4xl md:text-7.5xl font-black mb-6 tracking-tight font-serif-heading leading-none text-charcoal">
-            Your Vision, <br />
+      {/* Hero Header */}
+      <section className="relative pt-12 pb-8 md:pt-20 md:pb-12 px-4 text-center">
+        <div className="max-w-3xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-plum/5 border border-accent-gold/40 text-brand-plum font-extrabold text-[10px] sm:text-xs uppercase tracking-widest mb-5">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse"></span>
+            100% Pure Eggless Custom Bakery
+          </div>
+
+          <h1 className="text-3xl sm:text-4xl md:text-5.5xl font-black mb-4 tracking-tight font-serif-heading text-charcoal leading-tight">
+            Build Your Cake <br className="hidden sm:inline" />
             <span 
-              className="inline-block text-transparent bg-clip-text pb-2 mt-2"
-              style={{ backgroundImage: `linear-gradient(135deg, ${BRAND_COLOR} 30%, ${ACCENT_COLOR} 100%)`, WebkitBackgroundClip: 'text' }}
+              className="text-transparent bg-clip-text pb-1 inline-block"
+              style={{ backgroundImage: `linear-gradient(135deg, ${BRAND_COLOR} 30%, ${ACCENT_COLOR} 100%)` }}
             >
-              Our Masterpiece
+              Exactly Your Way
             </span>
           </h1>
-          
-          <div className="w-12 h-0.5 bg-accent-gold mx-auto mb-6"></div>
-          
-          <p className="font-semibold text-sm md:text-lg max-w-2xl mx-auto leading-relaxed mb-8 text-charcoal/60">
-            Celebrate sweet milestones in Jalandhar with our 100% eggless, premium handcrafted custom cakes, designed to turn heads and satisfy cravings.
+
+          <p className="font-semibold text-xs sm:text-sm md:text-base max-w-xl mx-auto leading-relaxed text-charcoal/65 mb-6">
+            Choose or type your exact weight (KG), custom shape, and favorite flavor. Complete freedom to customize every detail for your celebration!
           </p>
-          
-          <button 
-            onClick={handleCustomOrder}
-            className="group inline-flex items-center gap-3 px-8 py-4 text-white font-extrabold rounded-2xl shimmer-btn shadow-md hover:shadow-xl transition-all transform hover:-translate-y-0.5 active:scale-95 cursor-pointer text-xs uppercase tracking-widest bg-brand-plum"
-          >
-            <i className="fab fa-whatsapp text-lg text-green-400"></i>
-            <span>Consult Design Studio</span>
-            <i className="fas fa-arrow-right text-[10px] group-hover:translate-x-1.5 transition-transform"></i>
-          </button>
+
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <button 
+              onClick={handleDirectWhatsAppConsult}
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white border border-accent-gold/30 text-charcoal font-bold text-xs uppercase tracking-wider shadow-xs hover:border-brand-primary cursor-pointer transition-all"
+            >
+              <i className="fab fa-whatsapp text-emerald-600 text-sm"></i>
+              <span>Direct WhatsApp Help</span>
+            </button>
+            <span className="text-[11px] font-semibold text-charcoal/50">or personalize step-by-step below 👇</span>
+          </div>
         </div>
       </section>
 
-      {/* Interactive Custom Builder Section */}
-      <section className="max-w-5xl mx-auto px-4 py-10 relative z-20">
-        <div className="rounded-[2.5rem] p-6 sm:p-10 md:p-14 shadow-xl border relative overflow-hidden bg-cream-light border-accent-gold/25 transition-colors duration-500">
-          <div className="absolute inset-0 bg-[radial-gradient(#D9B382_1px,transparent_1px)] [background-size:28px_28px] opacity-10"></div>
+      {/* Stepper Navigation */}
+      <div className="max-w-4xl mx-auto px-4 mb-8">
+        <div className="bg-cream-light border border-accent-gold/25 rounded-2xl p-3 sm:p-4 shadow-sm flex items-center justify-between gap-2">
           
-          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-            
-            {/* Left: Designer selectors */}
-            <div className="lg:col-span-7 space-y-6">
-              <div>
-                <span className="text-[10px] font-extrabold uppercase tracking-widest text-accent-gold-dark mb-1 block">Interactive Builder</span>
-                <h2 className="text-2xl sm:text-3xl font-black font-serif-heading text-charcoal">
-                  Select Your Base Ideas
+          {/* Step 1 Button */}
+          <button
+            onClick={() => setCurrentStep(1)}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              currentStep === 1 
+                ? 'bg-brand-plum text-white shadow-xs' 
+                : 'text-charcoal/70 hover:bg-black/5'
+            }`}
+          >
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold ${
+              currentStep === 1 ? 'bg-accent-gold text-charcoal' : 'bg-charcoal/10 text-charcoal'
+            }`}>1</span>
+            <span className="hidden sm:inline truncate">Weight & Shape</span>
+            <span className="sm:hidden">Weight</span>
+          </button>
+
+          <i className="fas fa-chevron-right text-[10px] text-accent-gold-dark/60 shrink-0"></i>
+
+          {/* Step 2 Button */}
+          <button
+            onClick={() => setCurrentStep(2)}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              currentStep === 2 
+                ? 'bg-brand-plum text-white shadow-xs' 
+                : 'text-charcoal/70 hover:bg-black/5'
+            }`}
+          >
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold ${
+              currentStep === 2 ? 'bg-accent-gold text-charcoal' : 'bg-charcoal/10 text-charcoal'
+            }`}>2</span>
+            <span className="hidden sm:inline truncate">Flavor Choice</span>
+            <span className="sm:hidden">Flavor</span>
+          </button>
+
+          <i className="fas fa-chevron-right text-[10px] text-accent-gold-dark/60 shrink-0"></i>
+
+          {/* Step 3 Button */}
+          <button
+            onClick={() => setCurrentStep(3)}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              currentStep === 3 
+                ? 'bg-brand-plum text-white shadow-xs' 
+                : 'text-charcoal/70 hover:bg-black/5'
+            }`}
+          >
+            <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold ${
+              currentStep === 3 ? 'bg-accent-gold text-charcoal' : 'bg-charcoal/10 text-charcoal'
+            }`}>3</span>
+            <span className="hidden sm:inline truncate">Theme & WhatsApp</span>
+            <span className="sm:hidden">Theme</span>
+          </button>
+
+        </div>
+      </div>
+
+      {/* Main Interactive Wizard Box */}
+      <section className="max-w-4xl mx-auto px-4 relative z-20">
+        <div className="rounded-3xl p-6 sm:p-10 shadow-xl border bg-cream-light border-accent-gold/30">
+          
+          {/* ================= STEP 1: WEIGHT (KG) & SHAPE ================= */}
+          {currentStep === 1 && (
+            <div className="space-y-8 animate-in fade-in duration-300">
+              <div className="border-b border-accent-gold/20 pb-4">
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-accent-gold-dark block mb-1">
+                  Step 1 of 3
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black font-serif-heading text-charcoal">
+                  How Much Cake Do You Need?
                 </h2>
-                <div className="w-8 h-0.5 bg-accent-gold mt-3"></div>
+                <p className="text-xs sm:text-sm text-charcoal/60 font-medium mt-1">
+                  Select a common weight or type your own required KG.
+                </p>
               </div>
 
-              {/* Selector 1: Platter / Structure */}
-              <div className="space-y-3">
-                <label className="block text-[10px] font-extrabold uppercase tracking-widest text-charcoal/40">
-                  1. Tier Structure & Shape
+              {/* 1A. Select or Type KG */}
+              <div>
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-charcoal/80 mb-3">
+                  Cake Weight (Choose or Type)
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {OPTIONS_1.map((opt) => (
+
+                {/* Quick Presets */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5 mb-3.5">
+                  {WEIGHT_PRESETS.map((w) => (
                     <button
-                      key={opt.name}
-                      onClick={() => setOption1(opt.name)}
-                      className={`p-4 rounded-2xl text-left transition-all border shadow-sm cursor-pointer flex gap-3 items-start relative group ${
-                        option1 === opt.name
-                          ? 'text-white border-transparent'
-                          : 'bg-[#FAF6F0] text-charcoal border-accent-gold/20 hover:border-brand-primary'
+                      key={w.label}
+                      type="button"
+                      onClick={() => {
+                        setSelectedWeight(w.label);
+                        setCustomWeight('');
+                      }}
+                      className={`p-3 rounded-xl border text-center transition-all cursor-pointer ${
+                        selectedWeight === w.label
+                          ? 'border-brand-plum bg-brand-plum text-white font-extrabold shadow-sm'
+                          : 'bg-[#FAF6F0] border-accent-gold/25 text-charcoal hover:border-brand-primary'
                       }`}
-                      style={{ backgroundColor: option1 === opt.name ? BRAND_COLOR : undefined }}
                     >
-                      <span className="text-2xl pt-0.5 select-none">{opt.emoji}</span>
-                      <div className="flex-1">
-                        <h4 className="font-extrabold text-xs tracking-wide uppercase">{opt.name}</h4>
-                        <p className={`text-[10px] font-medium leading-relaxed mt-1 ${option1 === opt.name ? 'text-white/80' : 'text-charcoal/50'}`}>{opt.desc}</p>
+                      <div className="text-xs sm:text-sm font-black">{w.label}</div>
+                      <div className={`text-[10px] font-medium mt-0.5 ${selectedWeight === w.label ? 'text-white/80' : 'text-charcoal/50'}`}>
+                        {w.serves}
                       </div>
-                      <span className={`absolute top-3 right-3 text-xs font-bold font-sans ${option1 === opt.name ? 'text-white' : 'text-charcoal/80'}`}>₹{opt.price}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Custom Weight Write-in Box */}
+                <div className="p-3.5 rounded-2xl bg-[#FAF6F0] border border-accent-gold/25 flex flex-col sm:flex-row sm:items-center gap-3">
+                  <span className="text-xs font-extrabold text-charcoal shrink-0 flex items-center gap-2">
+                    <i className="fas fa-pen-nib text-brand-plum text-xs"></i>
+                    <span>Or Type Exact KG:</span>
+                  </span>
+                  <div className="flex-1 relative">
+                    <input 
+                      type="text"
+                      placeholder="e.g. 1.25 Kg, 5 Kg, 7.5 Kg, 10 Kg..."
+                      value={customWeight}
+                      onChange={(e) => {
+                        setCustomWeight(e.target.value);
+                        setSelectedWeight('Custom');
+                      }}
+                      className="w-full px-3.5 py-2 text-xs font-bold rounded-xl bg-white border border-accent-gold/30 outline-none focus:border-brand-plum text-charcoal"
+                    />
+                  </div>
+                  {customWeight && (
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                      Custom: {customWeight}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* 1B. Tier Count */}
+              <div>
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-charcoal/80 mb-2.5">
+                  Tier Structure
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                  {TIER_OPTIONS.map((tier) => (
+                    <button
+                      key={tier}
+                      type="button"
+                      onClick={() => setSelectedTiers(tier)}
+                      className={`py-2.5 px-3 rounded-xl border text-xs font-bold transition-all cursor-pointer text-center ${
+                        selectedTiers === tier
+                          ? 'border-brand-plum bg-brand-plum/10 text-brand-plum ring-1 ring-brand-plum'
+                          : 'bg-[#FAF6F0] border-accent-gold/25 text-charcoal/70 hover:border-brand-primary'
+                      }`}
+                    >
+                      {tier}
                     </button>
                   ))}
                 </div>
               </div>
 
-              {/* Selector 2: Theme / Drinks */}
-              <div className="space-y-3">
-                <label className="block text-[10px] font-extrabold uppercase tracking-widest text-charcoal/40">
-                  2. Design Theme / Style
+              {/* 1C. Shape Choice */}
+              <div>
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-charcoal/80 mb-3">
+                  Cake Shape (Select or Custom)
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {OPTIONS_2.map((opt) => (
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                  {SHAPE_PRESETS.map((s) => (
                     <button
-                      key={opt.name}
-                      onClick={() => setOption2(opt.name)}
-                      className={`p-4 rounded-2xl text-left transition-all border shadow-sm cursor-pointer flex gap-3 items-start relative group ${
-                        option2 === opt.name
-                          ? 'text-white border-transparent'
-                          : 'bg-[#FAF6F0] text-charcoal border-accent-gold/20 hover:border-brand-primary'
+                      key={s.name}
+                      type="button"
+                      onClick={() => {
+                        setSelectedShape(s.name);
+                        setCustomShape('');
+                      }}
+                      className={`p-3.5 rounded-2xl text-left border transition-all cursor-pointer flex items-start gap-3 ${
+                        selectedShape === s.name
+                          ? 'border-brand-plum bg-brand-plum/5 ring-1 ring-brand-plum'
+                          : 'bg-[#FAF6F0] border-accent-gold/25 hover:border-brand-primary'
                       }`}
-                      style={{ backgroundColor: option2 === opt.name ? BRAND_COLOR : undefined }}
                     >
-                      <span className="text-2xl pt-0.5 select-none">{opt.emoji}</span>
-                      <div className="flex-1">
-                        <h4 className="font-extrabold text-xs tracking-wide uppercase">{opt.name}</h4>
-                        <p className={`text-[10px] font-medium leading-relaxed mt-1 ${option2 === opt.name ? 'text-white/80' : 'text-charcoal/50'}`}>{opt.desc}</p>
+                      <i className={`fas ${s.icon} text-brand-plum text-base pt-0.5`}></i>
+                      <div>
+                        <h4 className="font-extrabold text-xs text-charcoal">{s.name}</h4>
+                        <p className="text-[10px] text-charcoal/60 font-medium leading-relaxed mt-0.5">{s.desc}</p>
                       </div>
-                      <span className={`absolute top-3 right-3 text-xs font-bold font-sans ${option2 === opt.name ? 'text-white' : 'text-charcoal/80'}`}>₹{opt.price}</span>
                     </button>
                   ))}
+                </div>
+
+                {/* Custom Shape Input */}
+                <div className="p-3.5 rounded-2xl bg-[#FAF6F0] border border-accent-gold/25 flex flex-col sm:flex-row sm:items-center gap-3">
+                  <span className="text-xs font-extrabold text-charcoal shrink-0 flex items-center gap-2">
+                    <i className="fas fa-shapes text-brand-plum text-xs"></i>
+                    <span>Custom Shape / Cut:</span>
+                  </span>
+                  <input 
+                    type="text"
+                    placeholder="e.g. Hexagon, Butterfly, Guitar, Football, Car shaped..."
+                    value={customShape}
+                    onChange={(e) => {
+                      setCustomShape(e.target.value);
+                      setSelectedShape('Custom');
+                    }}
+                    className="flex-1 px-3.5 py-2 text-xs font-bold rounded-xl bg-white border border-accent-gold/30 outline-none focus:border-brand-plum text-charcoal"
+                  />
+                  {customShape && (
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                      Custom: {customShape}
+                    </span>
+                  )}
                 </div>
               </div>
 
-              {/* Selector 3: Flavor / Add-ons */}
-              <div className="space-y-3">
-                <label className="block text-[10px] font-extrabold uppercase tracking-widest text-charcoal/40">
-                  3. Flavor Palette
-                </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {OPTIONS_3.map((opt) => (
-                    <button
-                      key={opt.name}
-                      onClick={() => setOption3(opt.name)}
-                      className={`p-4 rounded-2xl text-left transition-all border shadow-sm cursor-pointer flex gap-3 items-start relative group ${
-                        option3 === opt.name
-                          ? 'text-white border-transparent'
-                          : 'bg-[#FAF6F0] text-charcoal border-accent-gold/20 hover:border-brand-primary'
-                      }`}
-                      style={{ backgroundColor: option3 === opt.name ? BRAND_COLOR : undefined }}
-                    >
-                      <span className="text-2xl pt-0.5 select-none">{opt.emoji}</span>
-                      <div className="flex-1">
-                        <h4 className="font-extrabold text-xs tracking-wide uppercase">{opt.name}</h4>
-                        <p className={`text-[10px] font-medium leading-relaxed mt-1 ${option3 === opt.name ? 'text-white/80' : 'text-charcoal/50'}`}>{opt.desc}</p>
-                      </div>
-                      <span className={`absolute top-3 right-3 text-xs font-bold font-sans ${option3 === opt.name ? 'text-white' : 'text-charcoal/80'}`}>₹{opt.price}</span>
-                    </button>
-                  ))}
-                </div>
+              {/* Step 1 Footer */}
+              <div className="flex justify-end pt-4 border-t border-accent-gold/15">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(2)}
+                  className="px-6 py-3 rounded-xl bg-brand-plum text-white font-bold text-xs uppercase tracking-wider hover:bg-brand-plum-dark transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+                >
+                  <span>Continue to Flavors</span>
+                  <i className="fas fa-arrow-right text-[10px]"></i>
+                </button>
               </div>
             </div>
+          )}
 
-            {/* Right: Simulated Paper Ticket */}
-            <div className="lg:col-span-5 flex flex-col h-full justify-between relative">
-              
-              <div className="bg-white text-charcoal rounded-3xl p-6 sm:p-8 border border-neutral-300 shadow-xl flex flex-col justify-between flex-grow relative overflow-hidden font-mono min-h-[360px]">
-                
-                {/* Dotted Paper Tear Simulation Header */}
-                <div className="absolute top-0 left-0 right-0 h-2 bg-neutral-200 flex justify-between overflow-hidden">
-                  {Array.from({ length: 24 }).map((_, i) => (
-                    <div key={i} className="w-3 h-3 rounded-full bg-[#FAF6F0] -translate-y-1.5 flex-shrink-0"></div>
-                  ))}
+          {/* ================= STEP 2: FLAVOR SELECTION ================= */}
+          {currentStep === 2 && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="border-b border-accent-gold/20 pb-4">
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-accent-gold-dark block mb-1">
+                  Step 2 of 3
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black font-serif-heading text-charcoal">
+                  Pick or Specify Your Flavor
+                </h2>
+                <p className="text-xs sm:text-sm text-charcoal/60 font-medium mt-1">
+                  100% Eggless pure vegetarian recipes. Choose a signature flavor or write your own custom combination!
+                </p>
+              </div>
+
+              {/* Flavor Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                {FLAVOR_PRESETS.map((flavor) => (
+                  <button
+                    key={flavor.name}
+                    type="button"
+                    onClick={() => {
+                      setSelectedFlavor(flavor.name);
+                      setCustomFlavor('');
+                    }}
+                    className={`p-3.5 rounded-2xl text-left border transition-all cursor-pointer flex flex-col justify-between ${
+                      selectedFlavor === flavor.name
+                        ? 'border-brand-plum bg-brand-plum/5 ring-1 ring-brand-plum'
+                        : 'bg-[#FAF6F0] border-accent-gold/25 hover:border-brand-primary'
+                    }`}
+                  >
+                    <div>
+                      <span className="text-[9px] font-extrabold uppercase tracking-wider text-accent-gold-dark block mb-1">
+                        {flavor.tag}
+                      </span>
+                      <h4 className="font-extrabold text-xs text-charcoal mb-1">
+                        {flavor.name}
+                      </h4>
+                      <p className="text-[10px] text-charcoal/60 leading-relaxed font-medium">
+                        {flavor.desc}
+                      </p>
+                    </div>
+
+                    <div className="mt-3 pt-2 border-t border-accent-gold/15 flex items-center justify-between text-[10px] font-bold">
+                      <span className={selectedFlavor === flavor.name ? 'text-brand-plum' : 'text-charcoal/40'}>
+                        {selectedFlavor === flavor.name ? '✓ Selected' : 'Select'}
+                      </span>
+                      <i className={`fas ${selectedFlavor === flavor.name ? 'fa-check-circle text-brand-plum' : 'fa-circle text-charcoal/20'}`}></i>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Custom Flavor Write-in Box */}
+              <div className="p-4 rounded-2xl bg-[#FAF6F0] border border-accent-gold/25 flex flex-col sm:flex-row sm:items-center gap-3">
+                <span className="text-xs font-extrabold text-charcoal shrink-0 flex items-center gap-2">
+                  <i className="fas fa-blender text-brand-plum text-xs"></i>
+                  <span>Custom Flavor / Dual Flavor:</span>
+                </span>
+                <input 
+                  type="text"
+                  placeholder="e.g. Half Chocolate & Half Vanilla, Mango Mousse, Coffee Mocha, Pistachio..."
+                  value={customFlavor}
+                  onChange={(e) => {
+                    setCustomFlavor(e.target.value);
+                    setSelectedFlavor('Custom');
+                  }}
+                  className="flex-1 px-3.5 py-2 text-xs font-bold rounded-xl bg-white border border-accent-gold/30 outline-none focus:border-brand-plum text-charcoal"
+                />
+                {customFlavor && (
+                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                    Custom: {customFlavor}
+                  </span>
+                )}
+              </div>
+
+              {/* Step 2 Footer */}
+              <div className="flex items-center justify-between pt-4 border-t border-accent-gold/15">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(1)}
+                  className="px-5 py-2.5 rounded-xl border border-accent-gold/30 text-charcoal font-bold text-xs uppercase tracking-wider hover:bg-black/5 transition-all cursor-pointer"
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep(3)}
+                  className="px-6 py-3 rounded-xl bg-brand-plum text-white font-bold text-xs uppercase tracking-wider hover:bg-brand-plum-dark transition-all flex items-center gap-2 cursor-pointer shadow-sm"
+                >
+                  <span>Continue to Theme</span>
+                  <i className="fas fa-arrow-right text-[10px]"></i>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ================= STEP 3: THEME, DETAILS & WHATSAPP ================= */}
+          {currentStep === 3 && (
+            <div className="space-y-6 animate-in fade-in duration-300">
+              <div className="border-b border-accent-gold/20 pb-4">
+                <span className="text-[10px] font-extrabold uppercase tracking-widest text-accent-gold-dark block mb-1">
+                  Step 3 of 3
+                </span>
+                <h2 className="text-xl sm:text-2xl font-black font-serif-heading text-charcoal">
+                  Design Theme & Celebration Details
+                </h2>
+                <p className="text-xs sm:text-sm text-charcoal/60 font-medium mt-1">
+                  Pick a theme style or describe your vision. Send reference photos directly to WhatsApp!
+                </p>
+              </div>
+
+              {/* Theme Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                {THEME_PRESETS.map((theme) => (
+                  <button
+                    key={theme.name}
+                    type="button"
+                    onClick={() => {
+                      setSelectedTheme(theme.name);
+                      setCustomTheme('');
+                    }}
+                    className={`p-3.5 rounded-2xl text-left border transition-all cursor-pointer flex flex-col justify-between ${
+                      selectedTheme === theme.name
+                        ? 'border-brand-plum bg-brand-plum/5 ring-1 ring-brand-plum'
+                        : 'bg-[#FAF6F0] border-accent-gold/25 hover:border-brand-primary'
+                    }`}
+                  >
+                    <div>
+                      <h4 className="font-extrabold text-xs text-charcoal mb-1">
+                        {theme.name}
+                      </h4>
+                      <p className="text-[10px] text-charcoal/60 leading-relaxed font-medium">
+                        {theme.desc}
+                      </p>
+                    </div>
+
+                    <div className="mt-2.5 pt-2 border-t border-accent-gold/15 flex items-center justify-between text-[10px] font-bold">
+                      <span className={selectedTheme === theme.name ? 'text-brand-plum' : 'text-charcoal/40'}>
+                        {selectedTheme === theme.name ? '✓ Picked' : 'Pick'}
+                      </span>
+                      <i className={`fas ${selectedTheme === theme.name ? 'fa-check-circle text-brand-plum' : 'fa-circle text-charcoal/20'}`}></i>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Custom Theme Input */}
+              <div className="p-3.5 rounded-2xl bg-[#FAF6F0] border border-accent-gold/25 flex flex-col sm:flex-row sm:items-center gap-3">
+                <span className="text-xs font-extrabold text-charcoal shrink-0 flex items-center gap-2">
+                  <i className="fas fa-paint-roller text-brand-plum text-xs"></i>
+                  <span>Custom Theme / Idea:</span>
+                </span>
+                <input 
+                  type="text"
+                  placeholder="e.g. Cocomelon, Barbie, Cricket Stadium, Harry Potter, Neon Disco..."
+                  value={customTheme}
+                  onChange={(e) => {
+                    setCustomTheme(e.target.value);
+                    setSelectedTheme('Custom');
+                  }}
+                  className="flex-1 px-3.5 py-2 text-xs font-bold rounded-xl bg-white border border-accent-gold/30 outline-none focus:border-brand-plum text-charcoal"
+                />
+                {customTheme && (
+                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                    Custom: {customTheme}
+                  </span>
+                )}
+              </div>
+
+              {/* Optional Custom Cake Message & Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                <div>
+                  <label className="block text-[11px] font-extrabold uppercase tracking-wider text-charcoal/70 mb-1.5">
+                    Message / Name on Cake (Optional)
+                  </label>
+                  <input 
+                    type="text"
+                    placeholder="e.g. Happy Birthday Nishant!"
+                    value={cakeMessage}
+                    onChange={(e) => setCakeMessage(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-accent-gold/30 bg-[#FAF6F0] text-xs font-semibold text-charcoal outline-none focus:border-brand-plum"
+                  />
                 </div>
-                
-                <div className="pt-2">
-                  <div className="text-center border-b border-dashed border-neutral-400 pb-4 mb-4">
-                    <h3 className="font-black uppercase tracking-wider text-sm">The Baker Bro</h3>
-                    <p className="text-[8px] font-bold tracking-widest uppercase mt-0.5">JALANDHAR KITCHEN</p>
-                    <p className="text-[7px] font-semibold opacity-60 mt-1">ORDER ID: #GF-BAKER-{currentYear}</p>
+
+                <div>
+                  <label className="block text-[11px] font-extrabold uppercase tracking-wider text-charcoal/70 mb-1.5">
+                    Celebration Date (Optional)
+                  </label>
+                  <input 
+                    type="date"
+                    value={occasionDate}
+                    onChange={(e) => setOccasionDate(e.target.value)}
+                    className="w-full px-4 py-2.5 rounded-xl border border-accent-gold/30 bg-[#FAF6F0] text-xs font-semibold text-charcoal outline-none focus:border-brand-plum"
+                  />
+                </div>
+              </div>
+
+              {/* Order Summary & WhatsApp Direct Button */}
+              <div className="mt-6 rounded-2xl bg-[#FAF6F0] border border-accent-gold/30 p-5 sm:p-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-accent-gold/20 pb-4 mb-4">
+                  <div>
+                    <span className="text-[10px] font-extrabold uppercase tracking-widest text-accent-gold-dark block">
+                      Your Customized Cake Summary
+                    </span>
+                    <h3 className="text-base sm:text-lg font-black text-charcoal font-serif-heading mt-0.5">
+                      {effectiveWeight} ({selectedTiers}) • {effectiveShape}
+                    </h3>
+                    <p className="text-xs text-charcoal/65 font-medium mt-1">
+                      Flavor: <strong className="text-charcoal">{effectiveFlavor}</strong> • Theme: <strong className="text-charcoal">{effectiveTheme}</strong>
+                      {cakeMessage ? ` • Message: "${cakeMessage}"` : ''}
+                      {occasionDate ? ` • Date: ${occasionDate}` : ''}
+                    </p>
                   </div>
-                  
-                  <div className="space-y-4 text-xs font-semibold">
-                    <div className="flex justify-between items-start gap-3">
-                      <span>BASE: {option1}</span>
-                      <span className="shrink-0">₹{item1.price}.00</span>
-                    </div>
-                    <div className="flex justify-between items-start gap-3">
-                      <span>THEME: {option2}</span>
-                      <span className="shrink-0">₹{item2.price}.00</span>
-                    </div>
-                    <div className="flex justify-between items-start gap-3 border-b border-dashed border-neutral-300 pb-4">
-                      <span>FLAVOR: {option3}</span>
-                      <span className="shrink-0">₹{item3.price}.00</span>
-                    </div>
+
+                  <div className="text-left sm:text-right shrink-0">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-bold">
+                      <i className="fab fa-whatsapp text-xs"></i>
+                      <span>Pricing on WhatsApp</span>
+                    </span>
                   </div>
                 </div>
 
-                <div className="mt-8 border-t border-dashed border-neutral-400 pt-4">
-                  <div className="flex justify-between items-center text-sm font-black mb-6">
-                    <span className="uppercase tracking-wider">TOTAL ESTIMATED</span>
-                    <span className="text-lg">₹{estimatedTotal}.00</span>
-                  </div>
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleSendToWhatsApp}
+                    className="w-full sm:flex-1 py-4 bg-[#25D366] hover:bg-[#20bd5a] text-white font-extrabold rounded-xl flex items-center justify-center gap-2.5 transition-all shadow-md hover:shadow-lg cursor-pointer text-xs uppercase tracking-wider"
+                  >
+                    <i className="fab fa-whatsapp text-lg"></i>
+                    <span>Send Requirements & Discuss Price</span>
+                  </button>
 
                   <button
-                    onClick={handleCompileDesignOrder}
-                    className="w-full py-3.5 bg-[#25D366] text-white font-extrabold rounded-xl flex items-center justify-center gap-2 hover:bg-[#20bd5a] transition-all cursor-pointer shadow-md hover:shadow-lg text-xs uppercase tracking-wider font-sans border-0"
+                    type="button"
+                    onClick={() => setCurrentStep(2)}
+                    className="w-full sm:w-auto px-5 py-3.5 rounded-xl border border-accent-gold/30 text-charcoal font-bold text-xs uppercase tracking-wider hover:bg-black/5 transition-all cursor-pointer"
                   >
-                    <i className="fab fa-whatsapp text-base"></i>
-                    <span>Send Ticket to Chef</span>
+                    Modify
                   </button>
-                  <p className="text-[7px] font-semibold text-center opacity-40 mt-3 uppercase tracking-wider select-none">TERMS: final confirmation on WhatsApp call</p>
                 </div>
-                
-                {/* Dotted Paper Tear Simulation Footer */}
-                <div className="absolute bottom-0 left-0 right-0 h-2 bg-neutral-200 flex justify-between overflow-hidden">
-                  {Array.from({ length: 24 }).map((_, i) => (
-                    <div key={i} className="w-3 h-3 rounded-full bg-[#FAF6F0] translate-y-1.5 flex-shrink-0"></div>
-                  ))}
-                </div>
+                <p className="text-[10px] text-center text-charcoal/50 font-semibold mt-3">
+                  💬 Have an Instagram/Pinterest reference photo? Attach it directly in WhatsApp after clicking!
+                </p>
               </div>
-              
-            </div>
 
-          </div>
+            </div>
+          )}
+
         </div>
       </section>
 
-      {/* Connected Pathway Stepper timeline */}
-      <section className="max-w-6xl mx-auto px-4 py-12 relative z-10">
-        <div className="text-center mb-10">
-          <span className="text-[10px] font-extrabold uppercase tracking-widest text-accent-gold-dark block mb-2">Our Method</span>
-          <h3 className="text-2xl sm:text-3xl font-black text-charcoal font-serif-heading">
-            The Consultation Journey
-          </h3>
-          <div className="w-8 h-0.5 bg-accent-gold mx-auto mt-3"></div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10 relative">
-          
-          {/* Timeline Path line connection (Desktop Only) */}
-          <div className="hidden md:block absolute top-[28px] left-[10%] right-[10%] h-0.5 bg-accent-gold/20 -z-10"></div>
-
-          {STEPS.map((step, idx) => (
-            <div key={idx} className="flex flex-col items-center text-center space-y-4">
-              <div 
-                className="w-14 h-14 rounded-full flex items-center justify-center text-white font-extrabold text-base border-2 shadow-md relative z-10"
-                style={{ backgroundColor: BRAND_COLOR, borderColor: ACCENT_COLOR }}
-              >
-                {step.step}
-              </div>
-
-              <h4 className="text-base sm:text-lg font-black text-charcoal font-serif-heading pt-1">{step.title}</h4>
-              <p className="text-xs sm:text-sm leading-relaxed font-semibold max-w-xs text-charcoal/60">{step.desc}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Showcase Plaque */}
-      <section className="max-w-5xl mx-auto px-4 py-12 relative z-10">
-        <div className="bg-charcoal rounded-[2rem] overflow-hidden relative border border-accent-gold/20 shadow-2xl">
-          <div className="absolute inset-0 bg-[radial-gradient(#D9B382_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.03]"></div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2">
-            <div className="p-8 sm:p-12 md:p-16 flex flex-col justify-center">
-              <span className="text-[10px] font-extrabold uppercase tracking-widest text-accent-gold mb-3">
-                Customization Limits
-              </span>
-              <h2 className="text-3xl md:text-5xl font-black text-white mb-6 leading-tight font-serif-heading">
-                Any Theme. <br />
-                Any Flavor. <br />
-                Any Size.
-              </h2>
-              <ul className="space-y-4 mb-10 text-white">
-                {['3D Character & Toy Cakes', 'Gilded Multi-tier Wedding Cakes', 'Photo & Edible Sheet Print Cakes', 'Luxury Fresh Floral Cake Artistry'].map((item, i) => (
-                  <li key={i} className="flex items-center gap-3 text-white/80 font-bold text-xs uppercase tracking-wider">
-                    <i className="fas fa-check-circle text-accent-gold"></i>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-              
-              <button 
-                onClick={handleCustomOrder}
-                className="w-full sm:w-max px-8 py-4 bg-cream-light text-charcoal font-bold rounded-xl hover:bg-[#FDFBF8] transition-colors flex items-center justify-center gap-3 shadow-lg border border-accent-gold/30 cursor-pointer text-xs uppercase tracking-widest"
-              >
-                Get a Quote
-              </button>
-            </div>
-            
-            <div 
-              className="relative min-h-[300px] flex items-center justify-center overflow-hidden border-t lg:border-t-0 lg:border-l border-accent-gold/15 bg-gradient-to-br from-brand-plum-dark/40 to-accent-gold/10"
-            >
-              <i className="text-[12rem] text-white/[0.02] absolute animate-pulse fas fa-hat-chef"></i>
-              <div className="relative z-10 text-center p-8">
-                 <div className="bg-cream-light/10 backdrop-blur-md border border-white/10 p-8 rounded-2xl max-w-sm">
-                    <p className="text-white/90 font-bold italic leading-relaxed text-sm sm:text-base">
-                      "The design was identical to the picture I sent. Incredible details, and it tasted unbelievably delicious!"
-                    </p>
-                    <p className="text-xs uppercase tracking-wider mt-5 font-extrabold" style={{ color: ACCENT_COLOR }}>
-                      - Birthday Celebration Customer
-                    </p>
-                 </div>
-              </div>
-            </div>
+      {/* Trust Highlights */}
+      <section className="max-w-4xl mx-auto px-4 py-12">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="p-4 rounded-2xl bg-cream-light border border-accent-gold/25 text-center">
+            <i className="fas fa-leaf text-emerald-700 text-lg mb-2 block"></i>
+            <h4 className="font-extrabold text-xs text-charcoal uppercase tracking-wider mb-1">100% Eggless Purity</h4>
+            <p className="text-[11px] text-charcoal/60 font-medium">Pure vegetarian recipes baked with Belgian chocolate, dairy cream, and zero gelatin.</p>
           </div>
-        </div>
-      </section>
 
-      {/* Guidelines Note plaques */}
-      <section className="max-w-3xl mx-auto px-4 py-8 relative z-10 text-center">
-        <h3 className="text-xl sm:text-2xl font-black mb-6 font-serif-heading text-charcoal">Catering Guidelines</h3>
-        <div className="grid grid-cols-1 gap-4">
-          <div className="p-4 sm:p-5 bg-brand-plum/5 rounded-2xl text-brand-plum text-xs sm:text-sm font-semibold border border-accent-gold/20 flex items-center justify-center gap-3">
-            <i className="fas fa-calendar-check text-base text-accent-gold-dark shrink-0"></i>
-            <span>Order at least <strong className="font-extrabold text-brand-plum">24 to 48 hours</strong> in advance for standard custom designs.</span>
+          <div className="p-4 rounded-2xl bg-cream-light border border-accent-gold/25 text-center">
+            <i className="fas fa-clock text-brand-plum text-lg mb-2 block"></i>
+            <h4 className="font-extrabold text-xs text-charcoal uppercase tracking-wider mb-1">24-48 Hr Lead Time</h4>
+            <p className="text-[11px] text-charcoal/60 font-medium">Custom sculptures & multi-tier designs require 1-2 days advance notice for best results.</p>
           </div>
-          <div 
-            className="p-4 sm:p-5 rounded-2xl text-xs sm:text-sm font-semibold border flex items-center justify-center gap-3 text-charcoal/80"
-            style={{ backgroundColor: `${ACCENT_COLOR}15`, borderColor: `${ACCENT_COLOR}35` }}
-          >
-            <i className="fas fa-truck text-base text-accent-gold-dark shrink-0"></i>
-            <span>Delivered in heavy-duty food warming boxes directly within Jalandhar limits.</span>
+
+          <div className="p-4 rounded-2xl bg-cream-light border border-accent-gold/25 text-center">
+            <i className="fas fa-truck text-accent-gold-dark text-lg mb-2 block"></i>
+            <h4 className="font-extrabold text-xs text-charcoal uppercase tracking-wider mb-1">Safe City Delivery</h4>
+            <p className="text-[11px] text-charcoal/60 font-medium">Delivered securely in heavy-duty temperature-retaining cake boxes within Jalandhar.</p>
           </div>
         </div>
       </section>
