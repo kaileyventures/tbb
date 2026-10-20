@@ -28,19 +28,8 @@ export default function Home() {
   const menuItems = isBurger ? BURGER_MENU_ITEMS : sheetMenuItems;
   const isLoading = isBurger ? false : sheetLoading;
 
-  // Dynamically extract unique categories or set static fast food ones
+  // Dynamically extract unique categories for both baker and burger
   const dynamicCategories = useMemo(() => {
-    if (isBurger) {
-      return [
-        { id: 'all', label: 'All Cravings' },
-        { id: 'burgers', label: 'Burgers' },
-        { id: 'pizzas', label: 'Pizzas' },
-        { id: 'sandwiches', label: 'Sandwiches' },
-        { id: 'noodles', label: 'Noodles' },
-        { id: 'marine drinks', label: 'Marine Drinks' }
-      ];
-    }
-
     const uniqueCategories = new Set<string>();
     menuItems.forEach(item => {
       if (item.category && item.category.trim() !== '') {
@@ -53,7 +42,7 @@ export default function Home() {
       label: cat
     }));
 
-    return [{ id: 'all', label: 'All Delights' }, ...extractedCategories];
+    return [{ id: 'all', label: isBurger ? 'All Cravings' : 'All Delights' }, ...extractedCategories];
   }, [menuItems, isBurger]);
 
   // Advanced Dual-filtering with exact dynamic matching

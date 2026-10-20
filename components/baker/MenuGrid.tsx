@@ -92,49 +92,82 @@ export default function BakerMenuGrid({ filteredMenu, isLoading, whatsappNumber 
         </div>
       )}
 
-      {/* Pagination Controls */}
+      {/* Pagination Controls with Page Count & Smart Window */}
       {!isLoading && totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-12 md:mt-16">
-          {/* Previous Page Button */}
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all border border-accent-gold/20 shadow-sm cursor-pointer ${
-              currentPage === 1 
-                ? 'opacity-40 pointer-events-none' 
-                : 'bg-cream-light text-charcoal hover:bg-brand-plum/5 hover:border-brand-plum'
-            }`}
-          >
-            <i className="fas fa-chevron-left text-xs"></i>
-          </button>
+        <div className="flex flex-col items-center justify-center gap-3 mt-12 md:mt-16">
+          
+          {/* Total Pages Count Pill */}
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cream-light border border-accent-gold/25 text-[11px] font-extrabold uppercase tracking-wider text-charcoal/70 shadow-xs">
+            <span>Page</span>
+            <span className="text-brand-plum font-black">{currentPage}</span>
+            <span>of</span>
+            <span className="font-black text-charcoal">{totalPages}</span>
+            <span className="text-charcoal/30">•</span>
+            <span className="text-[10px] text-charcoal/50">{filteredMenu.length} items</span>
+          </div>
 
-          {/* Page Numbers */}
-          {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+          <div className="flex items-center justify-center gap-1.5 sm:gap-2">
+            {/* Previous Page Button */}
             <button
-              key={page}
-              onClick={() => handlePageChange(page)}
-              className={`w-10 h-10 rounded-xl text-xs font-extrabold transition-all border shadow-sm cursor-pointer ${
-                currentPage === page
-                  ? 'text-white bg-brand-plum border-brand-plum'
-                  : 'bg-cream-light text-charcoal hover:bg-brand-plum/5 hover:border-brand-plum border-accent-gold/20'
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all border border-accent-gold/20 shadow-xs cursor-pointer ${
+                currentPage === 1 
+                  ? 'opacity-35 pointer-events-none' 
+                  : 'bg-cream-light text-charcoal hover:bg-brand-plum/10 hover:border-brand-plum'
               }`}
+              aria-label="Previous Page"
             >
-              {page}
+              <i className="fas fa-chevron-left text-xs"></i>
             </button>
-          ))}
 
-          {/* Next Page Button */}
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all border border-accent-gold/20 shadow-sm cursor-pointer ${
-              currentPage === totalPages 
-                ? 'opacity-40 pointer-events-none' 
-                : 'bg-cream-light text-charcoal hover:bg-brand-plum/5 hover:border-brand-plum'
-            }`}
-          >
-            <i className="fas fa-chevron-right text-xs"></i>
-          </button>
+            {/* Smart Window Pagination */}
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(page => {
+                if (totalPages <= 7) return true;
+                if (page === 1 || page === totalPages) return true;
+                if (Math.abs(page - currentPage) <= 1) return true;
+                return false;
+              })
+              .map((page, index, array) => {
+                const prevPage = array[index - 1];
+                const showEllipsis = prevPage && page - prevPage > 1;
+
+                return (
+                  <div key={page} className="flex items-center gap-1.5 sm:gap-2">
+                    {showEllipsis && (
+                      <span className="w-6 text-center text-xs font-bold text-charcoal/40 select-none">
+                        •••
+                      </span>
+                    )}
+                    <button
+                      onClick={() => handlePageChange(page)}
+                      className={`w-10 h-10 rounded-xl text-xs font-extrabold transition-all border shadow-xs cursor-pointer ${
+                        currentPage === page
+                          ? 'text-white bg-brand-plum border-brand-plum'
+                          : 'bg-cream-light text-charcoal border-accent-gold/20 hover:border-brand-plum'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  </div>
+                );
+              })}
+
+            {/* Next Page Button */}
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all border border-accent-gold/20 shadow-xs cursor-pointer ${
+                currentPage === totalPages 
+                  ? 'opacity-35 pointer-events-none' 
+                  : 'bg-cream-light text-charcoal hover:bg-brand-plum/10 hover:border-brand-plum'
+              }`}
+              aria-label="Next Page"
+            >
+              <i className="fas fa-chevron-right text-xs"></i>
+            </button>
+          </div>
         </div>
       )}
 
