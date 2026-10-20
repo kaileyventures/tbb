@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Printer, Tag, X, Search, ShoppingCart, FileSpreadsheet } from 'lucide-react';
+import { Printer, Tag, X, Search, ShoppingCart, FileSpreadsheet, Plus, Minus } from 'lucide-react';
 import CustomDatePicker from '@/components/CustomDatePicker';
 import { formatDateFormatted, formatIndianCurrency } from '../adminUtils';
 
@@ -113,38 +113,32 @@ export const PosModal: React.FC<PosModalProps> = ({
               <Printer size={22} />
             </div>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', margin: 0, letterSpacing: '-0.02em' }}>
-                  The Baker Bro — POS Counter Sale
-                </h2>
-                <span style={{
-                  fontSize: '10px',
-                  fontWeight: '800',
-                  padding: '2px 8px',
-                  borderRadius: '12px',
-                  background: 'rgba(139, 92, 246, 0.2)',
-                  color: '#c4b5fd',
-                  border: '1px solid rgba(139, 92, 246, 0.4)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em'
-                }}>
-                  3-Inch Thermal Ready
-                </span>
-              </div>
+              <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#f8fafc', margin: 0, letterSpacing: '-0.02em' }}>
+                The Baker Bro — POS Counter Sale
+              </h2>
               <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#94a3b8' }}>
                 Tap product buttons to add/remove • Auto-records in Sales with payment method <b>POS</b>
               </p>
             </div>
           </div>
 
-          {/* Date Selector & Product Register Button & Bill No & Close */}
+          {/* Date Selector & Product Register Button & Bill No & Close (Aligned in one line) */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', minWidth: '150px' }}>
-              <span style={{ fontSize: '10px', fontWeight: '700', color: '#c4b5fd', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sale Date</span>
+            {/* Sale Date Input */}
+            <div style={{ minWidth: '155px' }}>
               <CustomDatePicker
                 value={posDate}
                 onChange={(e: any) => setPosDate(e.target?.value || e)}
-                style={{ minHeight: '34px', padding: '4px 8px', fontSize: '12px', background: '#1e293b' }}
+                style={{ 
+                  height: '38px', 
+                  minHeight: '38px', 
+                  padding: '6px 10px', 
+                  fontSize: '12px', 
+                  fontWeight: '600',
+                  background: '#1e293b',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(255, 255, 255, 0.12)'
+                }}
               />
             </div>
 
@@ -154,10 +148,11 @@ export const PosModal: React.FC<PosModalProps> = ({
               onClick={onOpenPriceRegister}
               title="Open Products & Price Register"
               style={{
-                display: 'flex',
+                display: 'inline-flex',
                 alignItems: 'center',
                 gap: '6px',
-                padding: '8px 12px',
+                height: '38px',
+                padding: '0 14px',
                 borderRadius: '10px',
                 background: 'rgba(245, 158, 11, 0.15)',
                 border: '1px solid rgba(245, 158, 11, 0.35)',
@@ -173,17 +168,23 @@ export const PosModal: React.FC<PosModalProps> = ({
               <Tag size={14} /> Price Register ({posCatalog.length})
             </button>
 
+            {/* Current Bill Badge */}
             <div style={{
-              padding: '6px 12px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              height: '38px',
+              padding: '0 12px',
               borderRadius: '10px',
               background: 'rgba(139, 92, 246, 0.12)',
               border: '1px solid rgba(139, 92, 246, 0.3)',
-              textAlign: 'right'
+              whiteSpace: 'nowrap'
             }}>
-              <div style={{ fontSize: '9px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Current Bill #</div>
-              <div style={{ fontSize: '13px', fontWeight: '800', color: '#a78bfa', fontFamily: 'monospace' }}>{nextPosBillNumber}</div>
+              <span style={{ fontSize: '10px', fontWeight: '800', color: '#94a3b8', textTransform: 'uppercase' }}>Current Bill:</span>
+              <span style={{ fontSize: '13px', fontWeight: '800', color: '#a78bfa', fontFamily: 'monospace' }}>{nextPosBillNumber}</span>
             </div>
 
+            {/* Close Button */}
             <button
               type="button"
               onClick={() => setShowPosModal(false)}
@@ -192,8 +193,8 @@ export const PosModal: React.FC<PosModalProps> = ({
                 border: '1px solid rgba(255, 255, 255, 0.1)',
                 borderRadius: '10px',
                 color: '#94a3b8',
-                width: '36px',
-                height: '36px',
+                width: '38px',
+                height: '38px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -315,10 +316,13 @@ export const PosModal: React.FC<PosModalProps> = ({
                   const minHeight = isTop2 ? '118px' : isNext4 ? '98px' : '82px';
 
                   return (
-                    <button
+                    <div
                       key={product.name}
-                      type="button"
-                      onClick={() => handleTogglePosItem(product)}
+                      onClick={() => {
+                        if (!isSelected) {
+                          handleTogglePosItem(product);
+                        }
+                      }}
                       style={{
                         gridColumn: gridColSpan,
                         minHeight: minHeight,
@@ -341,13 +345,14 @@ export const PosModal: React.FC<PosModalProps> = ({
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'space-between',
-                        cursor: 'pointer',
+                        cursor: isSelected ? 'default' : 'pointer',
                         textAlign: 'left',
                         transition: 'all 0.15s ease',
                         position: 'relative',
                         boxShadow: isSelected
                           ? '0 4px 14px rgba(139, 92, 246, 0.25)'
-                          : 'none'
+                          : 'none',
+                        userSelect: 'none'
                       }}
                       onMouseEnter={(e) => {
                         if (!isSelected) {
@@ -366,31 +371,58 @@ export const PosModal: React.FC<PosModalProps> = ({
                         }
                       }}>
                       
-                      {/* Selection Checkmark */}
+                      {/* Selection Checkmark / Quick Deselect */}
                       {isSelected && (
-                        <div style={{
-                          position: 'absolute',
-                          top: '7px',
-                          right: '7px',
-                          width: isTop2 ? '22px' : '18px',
-                          height: isTop2 ? '22px' : '18px',
-                          borderRadius: '50%',
-                          background: '#a855f7',
-                          color: '#fff',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: isTop2 ? '12px' : '10px',
-                          fontWeight: '900',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
-                          zIndex: 2
-                        }}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleTogglePosItem(product);
+                          }}
+                          title="Click to unselect and remove"
+                          style={{
+                            position: 'absolute',
+                            top: '7px',
+                            right: '7px',
+                            width: isTop2 ? '22px' : '18px',
+                            height: isTop2 ? '22px' : '18px',
+                            borderRadius: '50%',
+                            background: '#a855f7',
+                            color: '#fff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: isTop2 ? '12px' : '10px',
+                            fontWeight: '900',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.3)',
+                            zIndex: 2,
+                            border: 'none',
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#ef4444';
+                            e.currentTarget.innerText = '✕';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = '#a855f7';
+                            e.currentTarget.innerText = '✓';
+                          }}>
                           ✓
-                        </div>
+                        </button>
                       )}
 
-                      {/* Top Category Tag */}
-                      <div>
+                      {/* Top Category Tag & Name (Clickable to toggle if not selected) */}
+                      <div 
+                        style={{ cursor: isSelected ? 'pointer' : 'inherit' }}
+                        onClick={() => {
+                          if (isSelected) {
+                            // If selected, clicking title/top area can also toggle or increment
+                            handleTogglePosItem(product);
+                          }
+                        }}
+                        title={isSelected ? "Click title to unselect" : "Click to select"}
+                      >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isSmall ? '2px' : '4px' }}>
                           <span style={{
                             fontSize: isTop2 ? '11px' : '9px',
@@ -425,7 +457,7 @@ export const PosModal: React.FC<PosModalProps> = ({
                         )}
                       </div>
 
-                      {/* Price & Selected Qty footer */}
+                      {/* Price & Selected Qty footer with Stepper */}
                       <div style={{
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -441,20 +473,102 @@ export const PosModal: React.FC<PosModalProps> = ({
                         }}>
                           ₹{formatIndianCurrency(cartItem ? cartItem.price : product.price, false)}
                         </span>
-                        {isSelected && (
-                          <span style={{
-                            fontSize: isTop2 ? '12px' : '11px',
-                            fontWeight: '800',
-                            color: '#c4b5fd',
-                            background: 'rgba(139, 92, 246, 0.35)',
-                            padding: '1px 6px',
-                            borderRadius: '6px'
-                          }}>
-                            x{cartItem?.qty}
-                          </span>
+
+                        {isSelected && cartItem && (
+                          <div 
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              background: 'rgba(15, 23, 42, 0.75)',
+                              border: '1px solid rgba(139, 92, 246, 0.5)',
+                              borderRadius: '8px',
+                              padding: '2px 4px',
+                              gap: isTop2 ? '6px' : '4px',
+                              boxShadow: '0 2px 6px rgba(0,0,0,0.35)'
+                            }}
+                          >
+                            {/* Decrease Button (unselects when qty goes to 0) */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updatePosQty(product.name, -1);
+                              }}
+                              title={cartItem.qty === 1 ? "Reduce to 0 (Unselect)" : "Decrease quantity"}
+                              style={{
+                                width: isTop2 ? '22px' : '19px',
+                                height: isTop2 ? '22px' : '19px',
+                                borderRadius: '5px',
+                                background: cartItem.qty === 1 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255, 255, 255, 0.1)',
+                                border: cartItem.qty === 1 ? '1px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(255, 255, 255, 0.15)',
+                                color: cartItem.qty === 1 ? '#f87171' : '#fff',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                padding: 0,
+                                transition: 'all 0.15s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(239, 68, 68, 0.4)';
+                                e.currentTarget.style.color = '#fff';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = cartItem.qty === 1 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255, 255, 255, 0.1)';
+                                e.currentTarget.style.color = cartItem.qty === 1 ? '#f87171' : '#fff';
+                              }}
+                            >
+                              <Minus size={isTop2 ? 12 : 10} />
+                            </button>
+
+                            {/* Qty Display */}
+                            <span style={{
+                              fontSize: isTop2 ? '13px' : '11px',
+                              fontWeight: '900',
+                              color: '#c4b5fd',
+                              minWidth: isTop2 ? '18px' : '14px',
+                              textAlign: 'center',
+                              fontFamily: 'monospace'
+                            }}>
+                              {cartItem.qty}
+                            </span>
+
+                            {/* Increase Button */}
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updatePosQty(product.name, 1);
+                              }}
+                              title="Increase quantity"
+                              style={{
+                                width: isTop2 ? '22px' : '19px',
+                                height: isTop2 ? '22px' : '19px',
+                                borderRadius: '5px',
+                                background: 'rgba(139, 92, 246, 0.35)',
+                                border: '1px solid rgba(139, 92, 246, 0.6)',
+                                color: '#fff',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                padding: 0,
+                                transition: 'all 0.15s ease'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = '#8b5cf6';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(139, 92, 246, 0.35)';
+                              }}
+                            >
+                              <Plus size={isTop2 ? 12 : 10} />
+                            </button>
+                          </div>
                         )}
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
             </div>
@@ -872,7 +986,7 @@ export const PosModal: React.FC<PosModalProps> = ({
                     transition: 'all 0.15s'
                   }}>
                   <Printer size={15} />
-                  {isProcessingPos ? 'Processing...' : 'Save & Print 3" Slip'}
+                  {isProcessingPos ? 'Processing...' : 'Save & Print'}
                 </button>
               </div>
 
